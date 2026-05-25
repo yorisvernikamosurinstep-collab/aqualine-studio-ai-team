@@ -2,3 +2,4 @@ streamlit
 pdfplumber
 anthropic
 google-generativeai
+python-docx
