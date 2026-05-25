@@ -17,6 +17,20 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 from datetime import datetime, timedelta
 from collections import defaultdict
+# PASSWORD PROTECTION
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔐 AQUALINE STUDIO")
+    password = st.text_input("กรุณาใส่รหัสผ่าน", type="password")
+    if st.button("เข้าสู่ระบบ"):
+        if password == st.secrets.get("APP_PASSWORD", ""):
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("รหัสผ่านไม่ถูกต้อง")
+    st.stop()
 
 # ── PDF Export ──
 try:
