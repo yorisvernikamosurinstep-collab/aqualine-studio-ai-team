@@ -319,13 +319,69 @@ def load_vault():
                 for k in data:
                     if "knowledge" not in data[k]: data[k]["knowledge"] = ""
                     if "history" not in data[k]: data[k]["history"] = []
+                    # ── MEMORY SYSTEM: ต่อยอด vault structure ──
+                    if "memory" not in data[k]: data[k]["memory"] = ""
+                    if "pinned_facts" not in data[k]: data[k]["pinned_facts"] = []
+                    if "memory_updated_at" not in data[k]: data[k]["memory_updated_at"] = ""
                 return data
         except: pass
-    return {"Default Project": {"url": "", "brief": "", "knowledge": "", "history": []}}
+    return {"Default Project": {"url": "", "brief": "", "knowledge": "", "history": [],
+                                 "memory": "", "pinned_facts": [], "memory_updated_at": ""}}
 
 def save_vault(vault_data):
     with open(VAULT_FILE, "w", encoding="utf-8") as f:
         json.dump(vault_data, f, ensure_ascii=False, indent=4)
+
+# ==========================================
+# 🧠 MEMORY SYSTEM — ฟังก์ชันช่วยจัดการ Memory
+# ==========================================
+def get_memory_context(project_data: dict) -> str:
+    """สร้าง memory context string สำหรับใส่ใน prompt ทุก agent"""
+    parts = []
+    memory = project_data.get("memory", "").strip()
+    pinned = [f.strip() for f in project_data.get("pinned_facts", []) if f.strip()]
+    updated_at = project_data.get("memory_updated_at", "")
+
+    if pinned:
+        parts.append("📌 ข้อเท็จจริงสำคัญ (Pinned Facts):\n" + "\n".join(f"• {f}" for f in pinned))
+    if memory:
+        ts_note = f" (อัปเดตล่าสุด: {updated_at})" if updated_at else ""
+        parts.append(f"🧠 สรุปความรู้สะสมของ project นี้{ts_note}:\n{memory}")
+
+    if not parts:
+        return ""
+    return "[PROJECT MEMORY — อ่านก่อนเริ่มทำงาน]\n" + "\n\n".join(parts) + "\n[/PROJECT MEMORY]\n\n"
+
+def save_project_memory(project_name: str, memory_text: str):
+    """บันทึก auto-summary memory ลง vault"""
+    if project_name not in st.session_state.vault:
+        return
+    st.session_state.vault[project_name]["memory"] = memory_text.strip()
+    st.session_state.vault[project_name]["memory_updated_at"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+    save_vault(st.session_state.vault)
+
+def save_pinned_facts(project_name: str, facts: list):
+    """บันทึก pinned facts ลง vault"""
+    if project_name not in st.session_state.vault:
+        return
+    cleaned = [f.strip() for f in facts if f.strip()]
+    st.session_state.vault[project_name]["pinned_facts"] = cleaned
+    save_vault(st.session_state.vault)
+
+def generate_memory_summary(meeting_log: str, brief: str, model_name: str) -> str:
+    """เรียก Gemini สรุป meeting log → bullet memory"""
+    prompt = f"""อ่านบันทึกการประชุมนี้แล้วสรุปเป็น "ความรู้สะสม" ของ project นี้
+ใช้รูปแบบ bullet point กระชับ ไม่เกิน 15 ข้อ
+เน้น: ข้อมูลสินค้า, กลุ่มเป้าหมาย, กลยุทธ์ที่ตกลงกัน, ข้อห้าม/ข้อควรระวัง, ผลที่ผ่านมา
+
+บรีฟ: {brief[:300]}
+
+บันทึกประชุม:
+{meeting_log[:10000]}
+
+ตอบเป็นภาษาไทย เฉพาะ bullet points ไม่ต้องมีคำนำ"""
+    result = "".join(list(call_gemini_true_stream(prompt, model_name, max_output_tokens=2048)))
+    return result
 
 if "vault" not in st.session_state: st.session_state.vault = load_vault()
 if "current_project" not in st.session_state: st.session_state.current_project = list(st.session_state.vault.keys())[0]
@@ -1074,7 +1130,109 @@ with col_main:
 
     target_link = st.text_input("🔗 ลิงก์อ้างอิงสินค้า (URL):", value=current_data.get("url", ""))
 
-    # ── FIX #8: Template Buttons ──
+    # ==========================================
+    # 🧠 MEMORY PANEL — แสดงและจัดการ Project Memory
+    # ==========================================
+    _mem = current_data.get("memory", "").strip()
+    _pinned = current_data.get("pinned_facts", [])
+    _mem_updated = current_data.get("memory_updated_at", "")
+
+    # badge แจ้งเตือนถ้า memory เพิ่งอัปเดต
+    if st.session_state.get("memory_just_updated"):
+        st.success("🧠 Memory อัปเดตแล้ว! Agent ทุกคนจะจำข้อมูลนี้ใน session หน้า")
+        del st.session_state["memory_just_updated"]
+
+    with st.expander(
+        f"🧠 Project Memory {'✅ มีข้อมูลสะสม' if (_mem or _pinned) else '(ยังว่างเปล่า)'}",
+        expanded=bool(_mem or _pinned)
+    ):
+        mem_tab1, mem_tab2 = st.tabs(["📌 Pinned Facts", "🗂️ Auto-Summary Memory"])
+
+        # ── Tab 1: Pinned Facts ──
+        with mem_tab1:
+            st.caption("ปักหมุดข้อเท็จจริงสำคัญ — agent ทุกคนจะรู้ข้อมูลนี้ทันทีตั้งแต่เริ่ม session")
+            # แสดง facts ที่มีอยู่
+            current_facts = _pinned if _pinned else [""]
+            facts_text = st.text_area(
+                "ใส่ข้อมูลสำคัญ (1 บรรทัด = 1 ข้อ)",
+                value="\n".join(current_facts),
+                height=150,
+                placeholder="เช่น:\nสินค้า: น้ำกรอง Aqualine ราคา 890 บาท\nกลุ่มเป้าหมาย: แม่บ้านอายุ 30-45\nข้อห้าม: ห้ามเปรียบเทียบคู่แข่งโดยตรง\nโปร: ซื้อ 2 ลด 15%",
+                key="pinned_facts_input"
+            )
+            col_pin1, col_pin2 = st.columns(2)
+            with col_pin1:
+                if st.button("💾 บันทึก Pinned Facts", use_container_width=True):
+                    new_facts = [f.strip() for f in facts_text.split("\n") if f.strip()]
+                    save_pinned_facts(st.session_state.current_project, new_facts)
+                    st.success(f"✅ บันทึก {len(new_facts)} ข้อเรียบร้อย!")
+                    st.rerun()
+            with col_pin2:
+                if st.button("🗑️ ล้าง Pinned Facts", use_container_width=True):
+                    save_pinned_facts(st.session_state.current_project, [])
+                    st.success("ล้างแล้ว")
+                    st.rerun()
+
+        # ── Tab 2: Auto-Summary Memory ──
+        with mem_tab2:
+            if _mem:
+                st.caption(f"🕐 อัปเดตล่าสุด: {_mem_updated}" if _mem_updated else "")
+                st.markdown(
+                    f"<div style='background:rgba(30,41,59,0.6);border:1px dashed #334155;"
+                    f"border-radius:8px;padding:12px;font-size:13px;line-height:1.7'>"
+                    f"{_mem.replace(chr(10), '<br>')}</div>",
+                    unsafe_allow_html=True
+                )
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    if st.button("🔄 สร้าง Memory ใหม่จาก Session ล่าสุด", use_container_width=True):
+                        _last_log = ""
+                        _hist = current_data.get("history", [])
+                        if _hist:
+                            _last_log = _hist[-1].get("log", "")
+                        if _last_log:
+                            with st.spinner("🧠 กำลังสรุป..."):
+                                _new_mem = generate_memory_summary(
+                                    _last_log,
+                                    current_data.get("brief", ""),
+                                    get_best_model(API_KEY)
+                                )
+                                if _new_mem and not _new_mem.startswith("❌"):
+                                    save_project_memory(st.session_state.current_project, _new_mem)
+                                    st.success("✅ Memory อัปเดตแล้ว!")
+                                    st.rerun()
+                        else:
+                            st.warning("ยังไม่มีประวัติการประชุมสำหรับ project นี้")
+                with col_m2:
+                    if st.button("🗑️ ล้าง Memory", use_container_width=True):
+                        save_project_memory(st.session_state.current_project, "")
+                        st.success("ล้างแล้ว")
+                        st.rerun()
+                # แก้ไข memory ด้วยตนเอง
+                with st.expander("✏️ แก้ไข Memory ด้วยตนเอง"):
+                    edited_mem = st.text_area("แก้ไขเนื้อหา Memory:", value=_mem, height=200, key="edit_mem_ta")
+                    if st.button("💾 บันทึกการแก้ไข", use_container_width=True):
+                        save_project_memory(st.session_state.current_project, edited_mem)
+                        st.success("✅ บันทึกแล้ว!")
+                        st.rerun()
+            else:
+                st.info("🧠 ยังไม่มี Memory — รันประชุมครั้งแรกแล้วระบบจะสร้าง Memory อัตโนมัติ\nหรือกดปุ่มด้านล่างถ้ามี session เก่าอยู่แล้ว")
+                if st.button("🧠 สร้าง Memory จาก Session ล่าสุด", use_container_width=True):
+                    _hist = current_data.get("history", [])
+                    if _hist:
+                        _last_log = _hist[-1].get("log", "")
+                        with st.spinner("🧠 กำลังสรุป..."):
+                            _new_mem = generate_memory_summary(
+                                _last_log,
+                                current_data.get("brief", ""),
+                                get_best_model(API_KEY)
+                            )
+                            if _new_mem and not _new_mem.startswith("❌"):
+                                save_project_memory(st.session_state.current_project, _new_mem)
+                                st.success("✅ สร้าง Memory เรียบร้อย!")
+                                st.rerun()
+                    else:
+                        st.warning("ยังไม่มีประวัติการประชุมสำหรับ project นี้")
     st.markdown("**📋 Template บรีฟด่วน:**")
     tmpl_cols = st.columns(3)
     for i, (tmpl_name, tmpl_text) in enumerate(BRIEF_TEMPLATES.items()):
@@ -1222,13 +1380,16 @@ with col_main:
             _lang_sfx = lang_suffix(_lang)
 
             def build_prompt(aid, name, icon, p, meeting_ctx, use_search=False):
-                """สร้าง prompt โดยรองรับ custom persona + language"""
+                """สร้าง prompt โดยรองรับ custom persona + language + PROJECT MEMORY"""
                 custom_p = st.session_state.custom_personas.get(aid, "").strip()
                 role_desc = custom_p if custom_p else p
                 search_note = " (สำคัญมาก: ค้นหาข้อมูลที่เป็นปัจจุบัน และพิมพ์ลิงก์ URL แหล่งอ้างอิงด้วย)" if use_search else ""
                 # BUG2: จำกัด meeting_ctx ที่ส่งใน prompt ไม่ให้เกิน 8000 chars
                 safe_ctx = meeting_ctx[-8000:] if len(meeting_ctx) > 8000 else meeting_ctx
-                return (f"คุณคือ {name} ({role_desc}){search_note}\n"
+                # ── MEMORY: ดึง context จาก vault ใส่ขึ้นต้น prompt ──
+                mem_ctx = get_memory_context(st.session_state.vault[st.session_state.current_project])
+                return (f"{mem_ctx}"
+                        f"คุณคือ {name} ({role_desc}){search_note}\n"
                         f"แฟ้มงาน: {st.session_state.current_project}\n"
                         f"บรีฟ: {prompt_input}\nลิงก์: {target_link}\n"
                         f"[ข้อมูล]:\n{final_knowledge}\n"
@@ -1358,6 +1519,20 @@ with col_main:
             st.session_state.vault[st.session_state.current_project]["history"] = \
                 st.session_state.vault[st.session_state.current_project]["history"][-10:]
             save_vault(st.session_state.vault)
+
+            # ── 🧠 MEMORY SYSTEM: Auto-generate memory summary หลังประชุมจบ ──
+            if st.session_state.meeting_log and len(st.session_state.meeting_log) > 500:
+                try:
+                    with st.spinner("🧠 กำลังสรุปความรู้สะสมใหม่ให้ project..."):
+                        _mem_model = get_best_model(API_KEY)
+                        _new_memory = generate_memory_summary(
+                            st.session_state.meeting_log, prompt_input, _mem_model
+                        )
+                        if _new_memory and not _new_memory.startswith("❌"):
+                            save_project_memory(st.session_state.current_project, _new_memory)
+                            st.session_state["memory_just_updated"] = True
+                except Exception as _mem_err:
+                    pass  # Memory generation ล้มเหลวไม่กระทบระบบหลัก
 
             # 💾 V9: บันทึก Cache
             if st.session_state.meeting_log and len(st.session_state.raw_results) > 0:
