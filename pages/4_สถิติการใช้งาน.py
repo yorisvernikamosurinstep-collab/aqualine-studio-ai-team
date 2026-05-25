@@ -142,10 +142,13 @@ fc1, fc2, fc3, fc4, fc5 = st.columns([1.6, 1.6, 1.6, 1.4, 1])
 with fc1:
     min_d = df_all["date"].min().date()
     max_d = df_all["date"].max().date()
-    date_from = st.date_input("📅 ตั้งแต่", value=max_d - timedelta(days=29),
+    # clamp default value ให้อยู่ระหว่าง min_d และ max_d เสมอ
+    _default_from = max(min_d, min(max_d, max_d - timedelta(days=29)))
+    date_from = st.date_input("📅 ตั้งแต่", value=_default_from,
                                min_value=min_d, max_value=max_d, key="df")
 with fc2:
-    date_to = st.date_input("ถึงวันที่", value=max_d,
+    _default_to = max_d
+    date_to = st.date_input("ถึงวันที่", value=_default_to,
                              min_value=min_d, max_value=max_d, key="dt")
 with fc3:
     all_projects = ["ทั้งหมด"] + sorted(df_all["project"].unique().tolist())
