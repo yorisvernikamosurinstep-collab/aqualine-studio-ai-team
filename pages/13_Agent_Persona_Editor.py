@@ -55,6 +55,43 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
+# PERSONA FILE — shared กับ ai_team.py และทุกหน้า
+# ══════════════════════════════════════════════════════════════════
+PERSONA_FILE = "agent_personas.json"
+
+def load_personas_from_file() -> dict:
+    """โหลด custom personas จากไฟล์ (sync กับ ai_team.py)"""
+    if os.path.exists(PERSONA_FILE):
+        try:
+            with open(PERSONA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_personas_to_file(ape_custom: dict):
+    """
+    บันทึก personas ลงไฟล์ agent_personas.json
+    ai_team.py อ่าน custom_personas เป็น {aid: system_prompt_string}
+    แต่หน้านี้เก็บ full dict → แยกเก็บ 2 key:
+      - "full"   : full persona dict (สำหรับหน้านี้โหลดกลับมา)
+      - per aid  : system_prompt string ตรงๆ (สำหรับ ai_team.py)
+    """
+    out = {}
+    for aid, data in ape_custom.items():
+        # ai_team.py ใช้ custom_personas.get(aid, "") → ต้องเป็น string
+        out[aid] = data.get("system_prompt", "")
+    # เก็บ full data แยกไว้ที่ key พิเศษ ให้หน้านี้โหลดกลับมาได้ครบ
+    out["__full__"] = ape_custom
+    with open(PERSONA_FILE, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+def load_full_personas_from_file() -> dict:
+    """โหลด full persona dict กลับมาสำหรับหน้า Editor"""
+    raw = load_personas_from_file()
+    return raw.get("__full__", {})
+
+# ══════════════════════════════════════════════════════════════════
 # DEFAULT AGENTS
 # ══════════════════════════════════════════════════════════════════
 DEFAULT_AGENTS = {
@@ -89,7 +126,8 @@ DEFAULT_AGENTS = {
 # SESSION STATE
 # ══════════════════════════════════════════════════════════════════
 if "ape_custom_agents"  not in st.session_state:
-    st.session_state.ape_custom_agents = {}   # aid → persona dict
+    # โหลดจากไฟล์ทันทีตอนเริ่ม — sync กับ ai_team.py
+    st.session_state.ape_custom_agents = load_full_personas_from_file()
 if "ape_selected_aid"   not in st.session_state:
     st.session_state.ape_selected_aid  = "A1"
 if "ape_test_result"    not in st.session_state:
@@ -174,6 +212,34 @@ st.markdown("""
     <div class="page-title">AGENT PERSONA EDITOR</div>
     <div class="page-sub">แก้ไข System Prompt · สร้าง Custom Persona · A/B Test · ทดสอบ 25 Agent</div>
   </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── Sync Status Banner ──
+_synced_count = len(st.session_state.ape_custom_agents)
+if _synced_count > 0:
+    _names = ", ".join(
+        st.session_state.ape_custom_agents[k].get("name", k)
+        for k in list(st.session_state.ape_custom_agents.keys())[:5]
+    )
+    if _synced_count > 5:
+        _names += f" +{_synced_count - 5} อื่นๆ"
+    st.markdown(f"""
+<div style='background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.3);border-radius:10px;
+  padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px'>
+  <span style='font-size:18px'>🔗</span>
+  <div>
+    <span style='font-size:12px;font-weight:700;color:#34d399'>SYNCED กับ AI Team ทุกหน้า</span>
+    <span style='font-size:11px;color:#64748b;margin-left:8px'>{_synced_count} Custom Persona: {_names}</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+else:
+    st.markdown("""
+<div style='background:rgba(71,85,105,.08);border:1px solid #334155;border-radius:10px;
+  padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px'>
+  <span style='font-size:18px'>💡</span>
+  <span style='font-size:12px;color:#64748b'>ยังไม่มี Custom Persona — Agent ทั้งหมดใช้ Default · บันทึก Persona แรกเพื่อเริ่ม Sync</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -275,13 +341,17 @@ with col_edit:
                 "expertise":     expertise_tags,
                 "updated_at":    datetime.now().strftime("%d/%m/%Y %H:%M"),
             }
-            st.success(f"✅ บันทึก Persona ของ {new_name} แล้ว")
+            # ✅ sync ลงไฟล์ → ai_team.py และทุกหน้าอ่านได้ทันที
+            save_personas_to_file(st.session_state.ape_custom_agents)
+            st.success(f"✅ บันทึก & Sync แล้ว — {new_name} มีผลกับ AI Team ทุกหน้าทันที!")
             st.rerun()
     with ec2:
         if st.button("🔄 รีเซ็ต Default", use_container_width=True, key="reset_persona"):
             if aid in st.session_state.ape_custom_agents:
                 del st.session_state.ape_custom_agents[aid]
-                st.success(f"✅ รีเซ็ต {persona['name']} กลับ Default แล้ว")
+                # ✅ sync ลงไฟล์หลังรีเซ็ต
+                save_personas_to_file(st.session_state.ape_custom_agents)
+                st.success(f"✅ รีเซ็ต {persona['name']} กลับ Default แล้ว — Sync ทุกหน้าแล้ว")
                 st.rerun()
     with ec3:
         if st.button("📋 Copy Prompt", use_container_width=True, key="copy_prompt"):
@@ -392,6 +462,8 @@ if st.session_state.ape_custom_agents:
         with col_pdel:
             if st.button("🗑️", key=f"del_persona_{caid}", help="ลบ Custom Persona"):
                 del st.session_state.ape_custom_agents[caid]
+                # ✅ sync ลงไฟล์หลังลบ
+                save_personas_to_file(st.session_state.ape_custom_agents)
                 st.rerun()
 
     # Export all custom personas
@@ -412,8 +484,13 @@ if st.session_state.ape_custom_agents:
         if uploaded:
             try:
                 imported = json.loads(uploaded.read().decode("utf-8"))
+                # รองรับทั้ง format เก่า (full dict) และ format ใหม่ (มี __full__)
+                if "__full__" in imported:
+                    imported = imported["__full__"]
                 st.session_state.ape_custom_agents.update(imported)
-                st.success(f"✅ Import {len(imported)} persona แล้ว")
+                # ✅ sync ลงไฟล์ทันที
+                save_personas_to_file(st.session_state.ape_custom_agents)
+                st.success(f"✅ Import {len(imported)} persona แล้ว — Sync ทุกหน้าแล้ว")
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ ไฟล์ไม่ถูกต้อง: {e}")

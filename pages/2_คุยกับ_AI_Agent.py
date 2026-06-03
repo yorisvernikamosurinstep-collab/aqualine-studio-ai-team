@@ -70,6 +70,30 @@ else:
     st.error("🔑 ไม่พบ GOOGLE_API_KEY ใน secrets.toml")
     st.stop()
 
+# ══════════════════════════════════════════════════════════════════
+# 🧬 PERSONA LOADER — sync กับ Agent Persona Editor (หน้า 13)
+# ══════════════════════════════════════════════════════════════════
+PERSONA_FILE = "agent_personas.json"
+
+def load_custom_personas() -> dict:
+    """โหลด custom system prompts จาก agent_personas.json"""
+    if os.path.exists(PERSONA_FILE):
+        try:
+            with open(PERSONA_FILE, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            out = {}
+            for k, v in raw.items():
+                if k == "__full__":
+                    continue
+                if isinstance(v, str):
+                    out[k] = v
+                elif isinstance(v, dict):
+                    out[k] = v.get("system_prompt", "")
+            return out
+        except:
+            pass
+    return {}
+
 AGENTS = {
     "A1":  {"name":"นักกลยุทธ์การตลาด",   "icon":"👨‍💼","p":"วางแผนภาพรวมและจุดขาย",             "color":"#f59e0b"},
     "A2":  {"name":"ผู้จัดการโครงการ",      "icon":"📋",  "p":"คุมเป้าหมายและเวลา",               "color":"#8b5cf6"},
@@ -272,7 +296,10 @@ def build_parts(processed_files, url_contents, user_msg):
 def call_agent_stream(agent_id, history, user_msg, processed_files=None, url_contents=None):
     info   = AGENTS[agent_id]
     model  = get_best_model(API_KEY)
-    system = (f"คุณคือ {info['name']} ({info['p']}) ผู้เชี่ยวชาญของ AQUALINE STUDIO "
+    # 🧬 ใช้ Custom Persona จากหน้า 13 ถ้ามี ไม่งั้นใช้ default
+    _personas = load_custom_personas()
+    custom_p = _personas.get(agent_id, "").strip()
+    system = custom_p if custom_p else (f"คุณคือ {info['name']} ({info['p']}) ผู้เชี่ยวชาญของ AQUALINE STUDIO "
               f"ตอบในมุมมองของคุณ ตอบเป็นภาษาไทย กระชับและได้ใจความ "
               f"ถ้ามีไฟล์หรือ URL แนบให้วิเคราะห์และตอบตามเนื้อหานั้น")
     messages = []
@@ -314,7 +341,10 @@ def call_multi_agents(agent_ids: list, history: list, user_msg: str, processed_f
     for aid in agent_ids:
         info   = AGENTS[aid]
         model  = get_best_model(API_KEY)
-        system = (f"คุณคือ {info['name']} ({info['p']}) ผู้เชี่ยวชาญของ AQUALINE STUDIO "
+        # 🧬 ใช้ Custom Persona จากหน้า 13 ถ้ามี ไม่งั้นใช้ default
+        _personas = load_custom_personas()
+        custom_p = _personas.get(aid, "").strip()
+        system = custom_p if custom_p else (f"คุณคือ {info['name']} ({info['p']}) ผู้เชี่ยวชาญของ AQUALINE STUDIO "
                   f"ตอบในมุมมองของคุณ ตอบเป็นภาษาไทย กระชับและได้ใจความ")
         messages = []
         for h in history[-4:]:
