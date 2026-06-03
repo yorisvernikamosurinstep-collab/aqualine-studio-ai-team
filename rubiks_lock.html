@@ -1,0 +1,245 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+#rc-wrap{
+  position:fixed;inset:0;
+  background:#000;
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+}
+#rc-canvas{cursor:grab;display:block;touch-action:none;}
+#rc-canvas:active{cursor:grabbing}
+#unlock-flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:10000;transition:opacity 0.2s;}
+#unlock-flash.go{opacity:1}
+@keyframes ring-out{
+  0%{transform:translate(-50%,-50%) scale(0.8);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(2.8);opacity:0}
+}
+#pulse-ring{position:fixed;width:160px;height:160px;border-radius:50%;border:3px solid #4ade80;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none;z-index:9999;}
+#pulse-ring.go{animation:ring-out 0.8s ease-out forwards}
+#dots{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:10000;opacity:0;transition:opacity 0.3s;}
+#dots.visible{opacity:1}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.12);transition:background 0.2s,transform 0.15s;}
+.dot.lit{background:#fff;transform:scale(1.4);}
+</style>
+
+<div id="rc-wrap">
+  <canvas id="rc-canvas" width="400" height="400"></canvas>
+</div>
+<div id="dots"></div>
+<div id="unlock-btn" style="
+  position:fixed;
+  bottom:60px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:10001;
+  display:none;
+">
+  <button onclick="doUnlock()" style="
+    background:linear-gradient(90deg,#7c3aed,#2563eb);
+    color:white;
+    border:none;
+    border-radius:12px;
+    padding:14px 40px;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    box-shadow:0 0 30px rgba(124,58,237,0.8);
+    letter-spacing:2px;
+    font-family:monospace;
+  ">🔓 UNLOCK</button>
+</div>
+<div id="unlock-flash"></div>
+<div id="pulse-ring"></div>
+
+<script>
+(function(){
+
+// ══════════════════════════════
+//  เปลี่ยนรหัสได้ที่บรรทัดนี้
+var SECRET_CLICKS = 3;
+// ══════════════════════════════
+
+var C={W:0xf0f0f0,Y:0xffd500,R:0xc41e3a,O:0xff6000,B:0x0051a2,G:0x009b48,K:0x111111};
+var FC={U:C.W,D:C.Y,F:C.R,B:C.O,L:C.B,R:C.G};
+
+var canvas=document.getElementById('rc-canvas');
+var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+renderer.setSize(400,400);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(0x000000,0);
+
+var scene=new THREE.Scene();
+var camera=new THREE.PerspectiveCamera(38,1,0.1,100);
+camera.position.set(5.5,4.5,6.5);camera.lookAt(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+var dl=new THREE.DirectionalLight(0xffffff,1.0);dl.position.set(6,10,8);scene.add(dl);
+
+var GAP=1.04,cubelets=[],og=new THREE.Group();scene.add(og);
+
+function mkC(x,y,z){
+  var g=new THREE.BoxGeometry(0.93,0.93,0.93);
+  var m=[
+    new THREE.MeshLambertMaterial({color:x===1?FC.R:C.K}),
+    new THREE.MeshLambertMaterial({color:x===-1?FC.L:C.K}),
+    new THREE.MeshLambertMaterial({color:y===1?FC.U:C.K}),
+    new THREE.MeshLambertMaterial({color:y===-1?FC.D:C.K}),
+    new THREE.MeshLambertMaterial({color:z===1?FC.F:C.K}),
+    new THREE.MeshLambertMaterial({color:z===-1?FC.B:C.K}),
+  ];
+  var mesh=new THREE.Mesh(g,m);
+  mesh.position.set(x*GAP,y*GAP,z*GAP);og.add(mesh);return mesh;
+}
+function build(){cubelets.forEach(function(c){og.remove(c);});cubelets=[];
+  for(var x=-1;x<=1;x++)for(var y=-1;y<=1;y++)for(var z=-1;z<=1;z++){
+    if(x===0&&y===0&&z===0)continue;cubelets.push(mkC(x,y,z));
+  }
+}
+build();
+
+var drag=false,ox=0,oy=0,autoSpin=true,unlocked=false;
+canvas.addEventListener('mousedown',function(e){drag=true;ox=e.clientX;oy=e.clientY;autoSpin=false;});
+window.addEventListener('mouseup',function(){drag=false;if(!unlocked)setTimeout(function(){autoSpin=true;},3000);});
+window.addEventListener('mousemove',function(e){
+  if(!drag)return;
+  og.rotation.y+=(e.clientX-ox)*0.01;og.rotation.x+=(e.clientY-oy)*0.01;
+  ox=e.clientX;oy=e.clientY;
+});
+canvas.addEventListener('touchstart',function(e){
+  if(e.touches.length===1){drag=true;ox=e.touches[0].clientX;oy=e.touches[0].clientY;autoSpin=false;}
+},{passive:true});
+canvas.addEventListener('touchmove',function(e){
+  if(!drag||e.touches.length!==1)return;e.preventDefault();
+  og.rotation.y+=(e.touches[0].clientX-ox)*0.01;og.rotation.x+=(e.touches[0].clientY-oy)*0.01;
+  ox=e.touches[0].clientX;oy=e.touches[0].clientY;
+},{passive:false});
+canvas.addEventListener('touchend',function(){drag=false;if(!unlocked)setTimeout(function(){autoSpin=true;},3000);});
+
+var busy=false,mq=[];
+var MD={U:{a:'y',l:1,d:1},Ui:{a:'y',l:1,d:-1},D:{a:'y',l:-1,d:-1},Di:{a:'y',l:-1,d:1},
+        R:{a:'x',l:1,d:-1},Ri:{a:'x',l:1,d:1},L:{a:'x',l:-1,d:1},Li:{a:'x',l:-1,d:-1},
+        F:{a:'z',l:1,d:-1},Fi:{a:'z',l:1,d:1},B:{a:'z',l:-1,d:1},Bi:{a:'z',l:-1,d:-1}};
+
+function execM(name,done){
+  var def=MD[name];if(!def){done();return;}
+  var a=def.a,l=def.l,d=def.d;
+  var sl=cubelets.filter(function(c){
+    var v=a==='x'?c.position.x:a==='y'?c.position.y:c.position.z;
+    return Math.abs(v/GAP-l)<0.45;
+  });
+  var pv=new THREE.Group();og.add(pv);
+  sl.forEach(function(c){og.remove(c);pv.add(c);});
+  var dA=Math.PI/2*d/14,step=0;
+  function tick(){
+    if(step<14){
+      if(a==='x')pv.rotation.x+=dA;else if(a==='y')pv.rotation.y+=dA;else pv.rotation.z+=dA;
+      step++;requestAnimationFrame(tick);
+    } else {
+      sl.forEach(function(c){
+        pv.remove(c);c.applyMatrix4(pv.matrix);
+        ['x','y','z'].forEach(function(ax){
+          c.position[ax]=Math.round(c.position[ax]/GAP)*GAP;
+          c.rotation[ax]=Math.round(c.rotation[ax]/(Math.PI/2))*(Math.PI/2);
+        });og.add(c);
+      });og.remove(pv);done();
+    }
+  }tick();
+}
+function pq(){if(busy||mq.length===0)return;busy=true;execM(mq.shift(),function(){busy=false;pq();});}
+function scramble(){
+  var keys=Object.keys(MD);
+  for(var i=0;i<20;i++)mq.push(keys[Math.floor(Math.random()*keys.length)]);pq();
+}
+
+// ── CLICK COUNTER ──
+var clicks=0,rTimer=null;
+var dotsEl=document.getElementById('dots');
+for(var i=0;i<SECRET_CLICKS;i++){
+  var d=document.createElement('div');d.className='dot';d.id='d'+i;dotsEl.appendChild(d);
+}
+function updDots(){
+  for(var i=0;i<SECRET_CLICKS;i++){
+    var d=document.getElementById('d'+i);
+    if(d)d.className='dot'+(i<clicks?' lit':'');
+  }
+}
+function regClick(){
+  if(unlocked)return;
+  dotsEl.classList.add('visible');
+  clicks++;updDots();
+  clearTimeout(rTimer);
+  rTimer=setTimeout(function(){clicks=0;updDots();dotsEl.classList.remove('visible');},4000);
+  if(clicks>=SECRET_CLICKS){
+    clearTimeout(rTimer);
+    // แสดงปุ่ม UNLOCK ใต้จุด
+    var btn = document.getElementById('unlock-btn');
+    if(btn) btn.style.display='block';
+  }
+}
+
+var mdP={x:0,y:0},mdT=0;
+canvas.addEventListener('mousedown',function(e){mdP={x:e.clientX,y:e.clientY};mdT=Date.now();});
+canvas.addEventListener('mouseup',function(e){
+  var dt=Date.now()-mdT,dx=e.clientX-mdP.x,dy=e.clientY-mdP.y;
+  if(dt<300&&Math.sqrt(dx*dx+dy*dy)<10)regClick();
+});
+canvas.addEventListener('touchend',function(e){
+  if(e.changedTouches.length===1)regClick();
+},{passive:true});
+
+function clickStreamlitUnlock() {
+  // วิธี 1: ค้นหาและ click ปุ่มใน parent frames
+  var searched = false;
+  var targets = [window, window.parent, window.top];
+  for (var f = 0; f < targets.length; f++) {
+    try {
+      var doc = targets[f].document;
+      var btns = doc.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) {
+        var t = (btns[i].innerText || btns[i].textContent || '').trim();
+        if (t === '__UNLOCK__') {
+          // ทำให้ปุ่มคลิกได้ก่อน
+          btns[i].style.cssText = 'display:block!important;position:fixed!important;top:-1px!important;opacity:0!important;';
+          btns[i].dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true}));
+          btns[i].click();
+          searched = true;
+          return true;
+        }
+      }
+    } catch(e) {}
+  }
+  // วิธี 2: postMessage ทุก frame
+  try { window.parent.postMessage({type:'RUBIK_UNLOCKED'}, '*'); } catch(e){}
+  try { window.top.postMessage({type:'RUBIK_UNLOCKED'}, '*'); } catch(e){}
+  return searched;
+}
+
+window.doUnlock = function(){
+  if(unlocked)return; unlocked=true; autoSpin=false;
+  document.getElementById('unlock-flash').classList.add('go');
+  document.getElementById('pulse-ring').classList.add('go');
+  setTimeout(function(){
+    document.getElementById('unlock-flash').classList.remove('go');
+    // กด Streamlit button โดยตรง
+    var found = false;
+    var frames = [window.parent, window.top];
+    for (var f = 0; f < frames.length; f++) {
+      try {
+        var btns = frames[f].document.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          if ((btns[i].innerText || btns[i].textContent || '').trim() === 'UNLOCK') {
+            btns[i].click();
+            found = true;
+            break;
+          }
+        }
+      } catch(e) {}
+      if (found) break;
+    }
+  }, 600);
+}
+
+og.rotation.x=0.4;og.rotation.y=0.5;scramble();
+function animate(){requestAnimationFrame(animate);if(autoSpin&&!unlocked)og.rotation.y+=0.003;renderer.render(scene,camera);}
+animate();
+})();
+</script>

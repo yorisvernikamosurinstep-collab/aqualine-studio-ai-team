@@ -1,0 +1,106 @@
+[
+  {
+    "id": "d1",
+    "title": "Facebook Ad Copy — สินค้าบ้าน",
+    "category": "Ads",
+    "tags": [
+      "Facebook",
+      "Copy",
+      "บ้าน"
+    ],
+    "prompt": "เขียน Facebook Ad Copy สำหรับสินค้าตกแต่งบ้านพรีเมียม\nFormat: Headline (6 คำ) + Primary Text (3 ย่อหน้า) + CTA\nTone: Warm & Aspirational\nเน้น: คุณภาพ ความสวยงาม และความคุ้มค่าระยะยาว",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d2",
+    "title": "TikTok Hook 3 วิแรก",
+    "category": "Video",
+    "tags": [
+      "TikTok",
+      "Hook",
+      "Viral"
+    ],
+    "prompt": "สร้าง Hook สำหรับ TikTok/Reels 3 วิแรก จำนวน 5 แบบ\nรูปแบบ: [ตัวเลขน่าตกใจ] / [คำถามกระตุ้น] / [ข้อเท็จจริงที่ไม่รู้] / [ท้าทาย] / [Before-After]\nสินค้า: [ใส่ชื่อสินค้า]\nกลุ่มเป้าหมาย: [ใส่กลุ่มเป้าหมาย]",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d3",
+    "title": "Email Marketing — ลูกค้าเก่า",
+    "category": "CRM",
+    "tags": [
+      "Email",
+      "LINE OA",
+      "Retention"
+    ],
+    "prompt": "เขียน Email/LINE Broadcast สำหรับลูกค้าเก่าที่ไม่ได้ซื้อ 3 เดือน\nโครงสร้าง: Subject line (เปิดอ่าน) + Personalized greeting + ข้อเสนอพิเศษ + CTA\nTone: Friendly & Exclusive\nอย่าลืม: บอกว่าโปรนี้มีแค่ XX วัน",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d4",
+    "title": "Product Description — SEO Optimized",
+    "category": "SEO",
+    "tags": [
+      "SEO",
+      "Product Page",
+      "เว็บไซต์"
+    ],
+    "prompt": "เขียน Product Description สำหรับหน้าเว็บไซต์ SEO-Optimized\nความยาว: 200-300 คำ\nต้องมี: Keyword หลัก (ใส่ keyword), Feature 3 ข้อ, Benefit 3 ข้อ, Spec สำคัญ, CTA\nFormat: ย่อหน้าสั้นอ่านง่าย + Bullet points",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d5",
+    "title": "Sales Script — ปิดการขายทางโทรศัพท์",
+    "category": "Sales",
+    "tags": [
+      "Sales",
+      "Script",
+      "โทรศัพท์"
+    ],
+    "prompt": "เขียน Sales Script สำหรับโทรปิดการขายสินค้า [ชื่อสินค้า]\nโครงสร้าง:\n1. Opening (แนะนำตัว 15 วิ)\n2. Pain Point Discovery (ถาม 2-3 คำถาม)\n3. Pitch (เชื่อมสินค้ากับ pain)\n4. Handle Objections (ราคาแพง / ขอคิดก่อน)\n5. Close (CTA ชัดเจน)\nTone: Professional แต่ไม่กดดัน",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d6",
+    "title": "Instagram Caption — Lifestyle",
+    "category": "Social",
+    "tags": [
+      "Instagram",
+      "Caption",
+      "Lifestyle"
+    ],
+    "prompt": "เขียน Instagram Caption สไตล์ Lifestyle สำหรับสินค้า [ชื่อสินค้า]\nความยาว: 3-4 ประโยค\nโครงสร้าง: Hook 1 บรรทัด → เล่าเรื่อง Lifestyle → เชื่อมสินค้า → CTA อ่อนๆ\nปิดด้วย Hashtag 5-8 อัน\nTone: Aspirational & Warm",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d7",
+    "title": "Competitor Analysis Brief",
+    "category": "Research",
+    "tags": [
+      "Research",
+      "คู่แข่ง",
+      "Strategy"
+    ],
+    "prompt": "วิเคราะห์คู่แข่งในตลาด [ชื่อตลาด/สินค้า]\nครอบคลุม:\n1. คู่แข่งหลัก 3-5 ราย (ชื่อ, จุดขาย, ราคา)\n2. สิ่งที่คู่แข่งทำได้ดี\n3. ช่องว่างในตลาด (Gap) ที่เราจะเข้าได้\n4. แนะนำ Positioning สำหรับแบรนด์เรา\nอ้างอิง URL ถ้าหาได้",
+    "created": "2569-05-01",
+    "uses": 0
+  },
+  {
+    "id": "d8",
+    "title": "Pricing Strategy — Bundle Offer",
+    "category": "Pricing",
+    "tags": [
+      "Pricing",
+      "Bundle",
+      "Promo"
+    ],
+    "prompt": "วางแผน Pricing Strategy และ Bundle Offer สำหรับ [ชื่อสินค้า]\nราคาปัจจุบัน: [ราคา]\nคู่แข่งขาย: [ราคาคู่แข่ง]\nต้องการ:\n1. โครงสร้างราคา 3 Tier (Basic / Standard / Premium)\n2. Bundle ที่แนะนำ 2-3 แบบ\n3. เหตุผลทางจิตวิทยาที่ทำให้คนรู้สึกคุ้ม\n4. Flash Sale / Early Bird Strategy",
+    "created": "2569-05-01",
+    "uses": 0
+  }
+]

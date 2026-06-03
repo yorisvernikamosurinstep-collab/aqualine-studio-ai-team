@@ -1,0 +1,86 @@
+{
+  "sessions": [
+    {
+      "timestamp": "2026-05-26T08:32:28.326344",
+      "ts": "2026-05-26T08:32:28.326349",
+      "project": "Default Project",
+      "agents": 11,
+      "agents_used": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A9",
+        "A10",
+        "A17",
+        "A19",
+        "A20",
+        "A22",
+        "A25"
+      ],
+      "tokens": 58509,
+      "cost_usd": 0.01275,
+      "lang": "TH",
+      "brief": "ช่วยวิเคราะห์ ข้อดี ข้อ เสีย และข้อเสนอแนะ และช่วยวิจาร์ โปรชัวตามไฟล์แนบเป็โปรชัว โครงการ PRAN BURIROM (ปราณบุรีรมย์) โ"
+    },
+    {
+      "timestamp": "2026-06-01T16:43:56.354499",
+      "ts": "2026-06-01T16:43:56.354504",
+      "project": "Default Project",
+      "agents": 7,
+      "agents_used": [
+        "A1",
+        "A2",
+        "A3",
+        "A10",
+        "A11",
+        "A20",
+        "A25"
+      ],
+      "tokens": 32394,
+      "cost_usd": 0.00594,
+      "lang": "TH",
+      "brief": "ตอนนี้โครงการ THE CHATT มีคำสร้อยที่ไม่มีคำว่า Green  อยากใส่คำว่า Contemporary Thai green Living  ใต้ Contemporary Thai"
+    },
+    {
+      "timestamp": "2026-06-02T11:30:15.549011",
+      "ts": "2026-06-02T11:30:15.549016",
+      "project": "PRAN BURIROM",
+      "agents": 6,
+      "agents_used": [
+        "A1",
+        "A2",
+        "A3",
+        "A10",
+        "A17",
+        "A25"
+      ],
+      "tokens": 21230,
+      "cost_usd": 0.00398,
+      "lang": "TH",
+      "brief": "หาความเป็ฯกรีน จากที่มีอยู๋  1-\tSolar Energy Package \n2-\tRoof Insulation System \n3-\t AAC 20 cm Thermal Wall \n4-\tBuilt-in"
+    }
+  ],
+  "agent_usage": {
+    "A1": 3,
+    "A2": 3,
+    "A3": 3,
+    "A4": 1,
+    "A9": 1,
+    "A10": 3,
+    "A17": 2,
+    "A19": 1,
+    "A20": 2,
+    "A22": 1,
+    "A25": 3,
+    "A11": 1
+  },
+  "project_count": {
+    "Default Project": 2,
+    "PRAN BURIROM": 1
+  },
+  "weekly": {
+    "2026-W21": 1,
+    "2026-W22": 2
+  }
+}

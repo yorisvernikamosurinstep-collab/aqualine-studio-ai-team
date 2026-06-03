@@ -18,18 +18,41 @@ from io import BytesIO
 from datetime import datetime, timedelta
 from collections import defaultdict
 # PASSWORD PROTECTION
+import os as _os
+import streamlit.components.v1 as _components
+ 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+# ตรวจ query param ?auth=1 จาก rubiks unlock
 if not st.session_state.authenticated:
-    st.title("🔐 AQUALINE STUDIO")
-    password = st.text_input("กรุณาใส่รหัสผ่าน", type="password")
-    if st.button("เข้าสู่ระบบ"):
-        if password == st.secrets.get("APP_PASSWORD", ""):
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("รหัสผ่านไม่ถูกต้อง")
+    if st.query_params.get("auth") == "1":
+        st.session_state.authenticated = True
+        st.query_params.clear()
+        st.rerun()
+ 
+if not st.session_state.authenticated:
+    _lock_path = _os.path.join(_os.path.dirname(__file__), "rubiks_lock.html")
+    with open(_lock_path, "r", encoding="utf-8") as _f:
+        _lock_html = _f.read()
+
+    st.markdown("""
+    <style>
+      #MainMenu, header, footer {visibility: hidden;}
+      .block-container {padding: 0 !important; max-width: 100vw !important;}
+      section[data-testid="stSidebar"] {display: none;}
+      [data-testid="stAppViewContainer"] {background: #000 !important;}
+      div[data-testid="stVerticalBlock"] > div {gap: 0 !important;}
+      /* ซ่อนปุ่ม UNLOCK ของ Streamlit — รูบิคจะกดให้ */
+      div.stButton { position:fixed !important; top:-9999px !important; left:-9999px !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    if st.button("UNLOCK", key="rubik_unlock_btn"):
+        st.session_state.authenticated = True
+        st.rerun()
+
+    _components.html(_lock_html, height=700, scrolling=False)
     st.stop()
 
 # ── PDF Export ──
@@ -67,7 +90,7 @@ VAULT_FILE = "project_vault.json"
 ANALYTICS_FILE = "analytics_data.json"
 CACHE_FILE = "brief_cache.json"
 
-st.set_page_config(page_title="AQUALINE SPECIAL TEAM V9.0 ULTRA", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SURINSTEP", layout="wide", initial_sidebar_state="expanded")
 
 # ==========================================
 # 🔴 FIX NEW-1: SESSION GUARD — ป้องกัน duplicate run
@@ -137,7 +160,18 @@ def load_agent_personas() -> dict:
     if os.path.exists(PERSONA_FILE):
         try:
             with open(PERSONA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                raw = json.load(f)
+            # รองรับ format ใหม่จากหน้า 13: {aid: system_prompt_str, "__full__": {...}}
+            # ai_team.py ต้องการ {aid: system_prompt_str} เท่านั้น
+            out = {}
+            for k, v in raw.items():
+                if k == "__full__":
+                    continue  # ข้าม key พิเศษ
+                if isinstance(v, str):
+                    out[k] = v  # format เก่า — string ตรงๆ
+                elif isinstance(v, dict):
+                    out[k] = v.get("system_prompt", "")  # format ใหม่ — เอา system_prompt
+            return out
         except:
             pass
     return {}
@@ -149,6 +183,11 @@ def save_agent_personas(p: dict):
 if "custom_personas" not in st.session_state:
     # โหลดจากไฟล์ก่อน แล้วค่อย override ด้วย session ถ้ามี
     st.session_state.custom_personas = load_agent_personas()
+else:
+    # ✅ Reload จากไฟล์ทุกครั้ง เพื่อรับการเปลี่ยนแปลงจากหน้า Persona Editor ทันที
+    fresh = load_agent_personas()
+    if fresh:
+        st.session_state.custom_personas = fresh
 
 # ==========================================
 # 🔴 RATE LIMIT QUEUE SYSTEM
@@ -298,13 +337,13 @@ st.markdown("""
     </style>
     <div class="marquee-container">
         <div class="marquee-content">
-            AQUALINE QUALITY COMMITTED WITH HEART ❤️ &nbsp;&nbsp;&nbsp;&nbsp; ก็ถ้าไม่ทำอะไร ก็ไม่ต้องพู๊ดดด &nbsp;&nbsp;&nbsp;&nbsp; ❤️ &nbsp;&nbsp;&nbsp;&nbsp; AQUALINE QUALITY COMMITTED WITH HEART ❤️ 
+            "Design is not just what it looks like and feels like. Design is how it works."  &nbsp;&nbsp;&nbsp;&nbsp; "Design is not just what it looks like and feels like. Design is how it works."  &nbsp;&nbsp;&nbsp;&nbsp;  &nbsp;&nbsp;&nbsp;&nbsp; "Design is not just what it looks like and feels like. Design is how it works."  ❤️ 
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 st.markdown("""
-    <h1 class="centered-title">🎯 AQUALINE STUDIO SPECIAL TEAM <span class="version-tag">V9.0 ULTRA</span></h1>
+    <h1 class="centered-title">🎯 SURINSTEP <span class="version-tag">32000</span></h1>
     <p class="subtitle">Multi-Agent AI · Parallel Processing · Debate Mode · Smart Knowledge · Auto-Retry · Token Counter · PDF Export · AI Keywords</p>
     """, unsafe_allow_html=True)
 
@@ -655,7 +694,7 @@ def generate_branded_pdf(project_name, brief_text, results, summary_text="", rat
     story = []
 
     # ── Header ──
-    story.append(Paragraph("🌊 AQUALINE STUDIO", title_style))
+    story.append(Paragraph("🌊 V9.0 ULTRA", title_style))
     story.append(Paragraph("SPECIAL TEAM — AI MEETING REPORT", sub_style))
     story.append(Paragraph(f"โปรเจกต์: {project_name}  |  วันที่: {datetime.now().strftime('%d/%m/%Y %H:%M')}", sub_style))
     story.append(HRFlowable(width="100%", thickness=2, color=BRAND_BLUE, spaceAfter=10))
@@ -697,7 +736,7 @@ def generate_branded_pdf(project_name, brief_text, results, summary_text="", rat
     # ── Footer ──
     story.append(Spacer(1, 20))
     story.append(HRFlowable(width="100%", thickness=1, color=BRAND_CYAN, spaceAfter=6))
-    story.append(Paragraph("Generated by AQUALINE STUDIO SPECIAL TEAM V9.0 ULTRA · Powered by Google Gemini AI",
+    story.append(Paragraph("Generated by SURINSTEP · Powered by Google Gemini AI",
         ParagraphStyle("footer", parent=styles["Normal"],
             fontSize=8, fontName=_thai_font, textColor=colors.HexColor("#94a3b8"), alignment=TA_CENTER)))
 
@@ -797,7 +836,7 @@ def build_chairman_prompt(brief: str, meeting_log: str,
 ครอบคลุมทุกประเด็นสำคัญ ประเมินว่าดีหรือไม่ดี และเสนอแนวทางใหม่ถ้าผลยังไม่ดีพอ"""
     }
     system_prompt = (
-        f"คุณคือ Chairman Master ประธานสูงสุดของ AQUALINE STUDIO SPECIAL TEAM\n"
+        f"คุณคือ Chairman Master ประธานสูงสุดของ SURINSTEP\n"
         f"คุณฉลาดและมีประสบการณ์เหนือกว่าทุก agent ในทีม\n"
         f"หน้าที่: อ่านผลสรุปจากทีมทั้งหมด วิเคราะห์ภาพรวม "
         f"ประเมินว่าดีหรือไม่ดี และเสนอแนวทางที่ดีที่สุด\n"
@@ -1107,6 +1146,574 @@ with st.sidebar:
                     save_agent_personas(st.session_state.custom_personas)
         else:
             st.caption("เลือก Agent ก่อนเพื่อตั้งค่า Persona")
+
+# ==========================================
+# 🏛️ MEETING ROOM — วางก่อน Layout Columns (Full Width บนสุด)
+# ==========================================
+def _get_meeting_bg_b64() -> str:
+    for p in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "Meeting_room_bg.jpg"),
+        os.path.join("assets", "Meeting_room_bg.jpg"),
+    ]:
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+    return ""
+
+def _get_agent_img_b64(aid: str) -> str:
+    for folder in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents"),
+        "agents",
+    ]:
+        p = os.path.join(folder, f"{aid}.png")
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    return ""
+
+_mr_agents_parts = []
+for _aid, _info in team_data.items():
+    _img = _get_agent_img_b64(_aid)
+    _mr_agents_parts.append(
+        f'{{"id":"{_aid}","name":"{_info["name"]}","role":"{_info.get("p","").replace(chr(34),chr(39))}","img":"{_img}","icon":"{_info["icon"]}"}}'
+    )
+_mr_agents_json = "[" + ",".join(_mr_agents_parts) + "]"
+_mr_bg_b64      = _get_meeting_bg_b64()
+
+_MEETING_ROOM_HTML = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+html,body{{
+  width:100vw;
+  margin:0;padding:0;
+  background:#060610;
+  overflow:hidden;
+  font-family:'Courier New',monospace;
+}}
+
+/* ── Control Bar ── */
+#mr-ctrl{{
+  display:flex;gap:8px;padding:8px 14px;
+  background:linear-gradient(90deg,#0d0b2a,#13102a);
+  border-bottom:2px solid #534AB7;
+  align-items:center;flex-wrap:wrap;
+}}
+.mr-title{{color:#a78bfa;font-size:12px;font-weight:bold;letter-spacing:1px;}}
+#mr-status{{
+  margin-left:auto;padding:4px 16px;border-radius:20px;
+  font-size:11px;font-weight:bold;background:#1a1040;
+  border:1px solid #534AB7;color:#c4b5fd;transition:all .5s;
+}}
+#mr-status.meeting{{
+  background:linear-gradient(90deg,#3b0764,#1e1b4b);
+  border-color:#a855f7;color:#f0e6ff;
+  animation:pstat 2s ease-in-out infinite;
+}}
+@keyframes pstat{{0%,100%{{box-shadow:0 0 14px rgba(168,85,247,.4);}}
+  50%{{box-shadow:0 0 28px rgba(168,85,247,.85);}}}}
+
+.mr-btn{{
+  padding:5px 16px;border-radius:6px;border:2px solid;
+  font-family:'Courier New',monospace;font-size:11px;font-weight:bold;
+  cursor:pointer;transition:all .2s;background:#0d0d1a;user-select:none;
+}}
+.mr-btn:hover{{opacity:.8;transform:scale(1.05);}}
+.mr-btn.walk{{border-color:#60a5fa;color:#60a5fa;}}
+.mr-btn.walk.active{{
+  background:rgba(96,165,250,.2);border-color:#93c5fd;color:#dbeafe;
+  box-shadow:0 0 10px rgba(96,165,250,.4);
+}}
+.mr-btn.meet{{border-color:#f59e0b;color:#f59e0b;}}
+.mr-btn.meet.active{{
+  background:rgba(245,158,11,.18);border-color:#fbbf24;color:#fef3c7;
+  animation:mbtn 1.4s ease-in-out infinite;
+}}
+@keyframes mbtn{{
+  0%,100%{{box-shadow:0 0 8px rgba(245,158,11,.4);}}
+  50%{{box-shadow:0 0 22px rgba(245,158,11,.9);}}
+}}
+
+/* ── Scene: เต็ม viewport ทั้งกว้างและสูง ── */
+#mr-sc{{
+  position:relative;
+  width:100vw;
+  overflow:hidden;
+  background:#060610;
+}}
+#mr-world{{position:absolute;transform-origin:top left;}}
+#mr-canvas{{position:absolute;top:0;left:0;display:block;}}
+#mr-al{{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}}
+
+/* ── Agent ── */
+.mr-agent{{
+  position:absolute;
+  image-rendering:pixelated;
+  pointer-events:auto;
+  transition:filter .5s;
+  cursor:pointer;
+}}
+.mr-agent img{{
+  width:100%;height:100%;
+  object-fit:contain;image-rendering:pixelated;display:block;
+}}
+.mr-agent .msh{{
+  position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);
+  width:70%;height:6px;background:rgba(0,0,0,.55);
+  border-radius:50%;filter:blur(2px);
+}}
+.mr-agent .mlb{{
+  position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);
+  font-size:9px;white-space:nowrap;color:#fde68a;font-weight:bold;
+  text-shadow:1px 1px 0 #000,-1px -1px 0 #000,0 0 4px #000;
+}}
+.mr-agent.seated{{
+  filter:drop-shadow(0 0 9px rgba(130,180,255,.95))
+         drop-shadow(0 0 4px rgba(168,85,247,.7));
+}}
+/* ── Tooltip ── */
+.mr-tooltip{{
+  position:fixed;
+  background:rgba(10,15,40,0.96);
+  border:1px solid #3b82f6;
+  border-radius:10px;
+  padding:10px 14px;
+  min-width:170px;
+  max-width:220px;
+  pointer-events:none;
+  z-index:99999;
+  display:none;
+  box-shadow:0 0 18px rgba(59,130,246,0.5);
+}}
+.mr-tooltip .tt-icon{{ font-size:22px; }}
+.mr-tooltip .tt-name{{ color:#fff; font-weight:bold; font-size:13px; margin:4px 0 2px; }}
+.mr-tooltip .tt-role{{ color:#93c5fd; font-size:11px; line-height:1.4; }}
+.mr-tooltip .tt-id{{ color:#6b7280; font-size:10px; margin-top:4px; }}
+.mr-tooltip .tt-badge{{
+  display:inline-block; background:#7c3aed; color:#fff;
+  font-size:9px; padding:1px 6px; border-radius:4px; margin-top:4px;
+}}
+
+/* ── Seat dots ── */
+.mr-seat{{
+  position:absolute;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(100,160,255,.55) 0%,rgba(100,160,255,.04) 100%);
+  border:1px solid rgba(100,160,255,.45);
+  transform:translate(-50%,-50%);
+  animation:sdot 2.5s ease-in-out infinite;
+}}
+@keyframes sdot{{
+  0%,100%{{opacity:.2;transform:translate(-50%,-50%) scale(.8);}}
+  50%{{opacity:.75;transform:translate(-50%,-50%) scale(1.25);}}
+}}
+</style>
+</head>
+<body>
+
+<div id="mr-ctrl">
+  <span class="mr-title">🏛️ MEETING ROOM — AQUALINE HQ</span>
+  <button class="mr-btn walk active" id="btn-walk" onclick="setMRMode('walk')">🚶 เดินเล่นอิสระ</button>
+  <button class="mr-btn meet" id="btn-meet" onclick="setMRMode('meet')">🔔 เริ่มประชุม</button>
+  <div id="mr-status">💬 Agent เดินเล่นในห้องประชุม</div>
+</div>
+
+<div id="mr-sc">
+  <div id="mr-world">
+    <canvas id="mr-canvas"></canvas>
+    <div id="mr-al"></div>
+  </div>
+</div>
+<div class="mr-tooltip" id="mr-tt">
+  <div class="tt-icon" id="tt-icon"></div>
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-role" id="tt-role"></div>
+  <div class="tt-id" id="tt-id"></div>
+  <span class="tt-badge">EPIC</span>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  CONFIG — ค่าวัดจากภาพจริง Meeting_room_bg.jpg 1598×984
+//  วิเคราะห์ด้วย Python PIL overlay → แม่นยำ pixel-level
+// ══════════════════════════════════════════════════════
+const MR_AGENTS = {_mr_agents_json};
+
+const IMG_W = 1598, IMG_H = 984;
+const CTRL_H = 44;   // px ความสูง control bar
+
+// ── ศูนย์กลางโต๊ะ (วัดจากภาพ Meeting_room_bg.jpg pixel-level) ──
+// AQUALINE logo center ≈ X:50%, Y:36%
+const CX = 0.500;
+const CY = 0.500;
+
+// ── วงเก้าอี้ (seat ring) — ขอบโต๊ะด้านนอกพอดี ──
+// จากภาพ: agent บนสุด Y≈20%, ล่างสุด Y≈53% → RY=(53-20)/2/100=0.165, center=(20+53)/2/100=0.365
+// ซ้ายสุด X≈17%, ขวาสุด X≈83% → RX=(83-17)/2/100=0.330
+const SEAT_RX = 0.370;
+const SEAT_RY = 0.220;
+
+// ── วงใน Chairman zone ──
+const INNER_RX = 0.170;
+const INNER_RY = 0.085;
+
+// ── โซนพื้นเดิน (floor bounding box) ──
+const FX1 = 0.06, FX2 = 0.94;
+const FY1 = 0.20, FY2 = 0.85;
+
+const AGENT_W = 60, AGENT_H = 76;
+
+// ════════════════════════════════════════
+//  DOM REFS
+// ════════════════════════════════════════
+const sc     = document.getElementById('mr-sc');
+const world  = document.getElementById('mr-world');
+const canvas = document.getElementById('mr-canvas');
+const ctx    = canvas.getContext('2d');
+const al     = document.getElementById('mr-al');
+const sts    = document.getElementById('mr-status');
+const btnW   = document.getElementById('btn-walk');
+const btnM   = document.getElementById('btn-meet');
+
+let WW = IMG_W, WH = IMG_H;
+
+// ════════════════════════════════════════
+//  RESIZE — fit-width + aspect-ratio height
+//  + notify Streamlit parent to resize iframe
+// ════════════════════════════════════════
+function resize() {{
+  const vw  = document.documentElement.clientWidth || window.innerWidth;
+  const scH = Math.round(vw * WH / WW);
+  sc.style.width  = vw + 'px';
+  sc.style.height = scH + 'px';
+  const totalH = scH + CTRL_H + 4;
+  document.body.style.width  = vw + 'px';
+  document.body.style.height = totalH + 'px';
+
+  world.style.width     = WW + 'px';
+  world.style.height    = WH + 'px';
+  world.style.transform = `scale(${{vw / WW}})`;
+
+  // ส่ง postMessage ให้ Streamlit ปรับ iframe height
+  const msg = {{ type:'streamlit:setFrameHeight', height: totalH }};
+  try {{ window.parent.postMessage(msg, '*'); }} catch(e) {{}}
+  try {{ window.top.postMessage(msg, '*'); }} catch(e) {{}}
+}}
+window.addEventListener('resize', resize);
+
+// ════════════════════════════════════════
+//  GEOMETRY HELPERS
+// ════════════════════════════════════════
+// ตรวจว่าจุด (x,y) อยู่ใน inner circle หรือไม่
+function inInner(x, y) {{
+  const dx = (x - CX*WW) / (INNER_RX*WW);
+  const dy = (y - CY*WH) / (INNER_RY*WH);
+  return dx*dx + dy*dy < 1;
+}}
+
+// ตรวจว่าจุดอยู่ในขอบ floor
+function inFloor(x, y) {{
+  return x > FX1*WW && x < FX2*WW && y > FY1*WH && y < FY2*WH;
+}}
+
+// คืนตำแหน่ง seat ที่ i บน seat ring
+// agent ยืนที่ขอบโต๊ะด้านนอก — ชดเชย Y เพื่อให้เท้าแตะขอบโต๊ะ
+function seatXY(i, n) {{
+  const a = (2*Math.PI/n)*i - Math.PI/2;
+  const sx = CX*WW + Math.cos(a)*SEAT_RX*WW;
+  const sy = CY*WH + Math.sin(a)*SEAT_RY*WH;
+  return {{ x: sx, y: sy }};
+}}
+
+// สุ่มตำแหน่งบนพื้นห้อง (ไม่เข้าวงใน)
+function randFloor() {{
+  let x, y, tries=0;
+  do {{
+    x = (FX1 + Math.random()*(FX2-FX1)) * WW;
+    y = (FY1 + Math.random()*(FY2-FY1)) * WH;
+    tries++;
+  }} while (inInner(x,y) && tries < 50);
+  return {{ x, y }};
+}}
+
+// ════════════════════════════════════════
+//  LOAD BACKGROUND
+// ════════════════════════════════════════
+const bgImg = new Image();
+bgImg.onload = function() {{
+  WW = bgImg.naturalWidth  || IMG_W;
+  WH = bgImg.naturalHeight || IMG_H;
+  canvas.width = WW; canvas.height = WH;
+  ctx.drawImage(bgImg, 0, 0, WW, WH);
+  al.style.width = WW+'px'; al.style.height = WH+'px';
+  resize();
+  // เรียก resize ซ้ำเพื่อให้ Streamlit รับ height แน่นอน
+  setTimeout(resize, 100);
+  setTimeout(resize, 500);
+  setTimeout(resize, 1500);
+  initAll(); requestAnimationFrame(loop);
+}};
+bgImg.onerror = function() {{
+  canvas.width = WW; canvas.height = WH;
+  ctx.fillStyle='#060818'; ctx.fillRect(0,0,WW,WH);
+  ctx.strokeStyle='rgba(83,74,183,.12)'; ctx.lineWidth=1;
+  for(let x=0;x<WW;x+=80){{ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,WH);ctx.stroke();}}
+  for(let y=0;y<WH;y+=80){{ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(WW,y);ctx.stroke();}}
+  al.style.width = WW+'px'; al.style.height = WH+'px';
+  resize(); initAll(); requestAnimationFrame(loop);
+}};
+bgImg.src = '{_mr_bg_b64}';
+
+// ════════════════════════════════════════
+//  SEAT INDICATOR DOTS
+// ════════════════════════════════════════
+const seatEls = [];
+function makeSeatDots() {{
+  seatEls.forEach(d=>d.remove()); seatEls.length=0;
+  const n = MR_AGENTS.length;
+  for(let i=0;i<n;i++) {{
+    const p = seatXY(i,n);
+    const d = document.createElement('div');
+    d.className = 'mr-seat';
+    d.style.cssText = `left:${{p.x}}px;top:${{p.y}}px;width:18px;height:10px;animation-delay:${{i*0.1}}s`;
+    al.appendChild(d); seatEls.push(d);
+  }}
+}}
+
+// ════════════════════════════════════════
+//  INIT AGENTS
+// ════════════════════════════════════════
+const states = [];
+let tick=0, mrMode='walk';
+
+function initAll() {{
+  makeSeatDots();
+  MR_AGENTS.forEach((ag, i) => {{
+    const wrap = document.createElement('div');
+    wrap.className = 'mr-agent';
+    wrap.style.width  = AGENT_W+'px';
+    wrap.style.height = AGENT_H+'px';
+
+    if (ag.img) {{
+      const im = document.createElement('img');
+      im.src = ag.img; wrap.appendChild(im);
+    }} else {{
+      wrap.style.fontSize='34px';
+      wrap.style.display='flex';
+      wrap.style.alignItems='flex-end';
+      wrap.style.justifyContent='center';
+      wrap.textContent = ag.icon||'🤖';
+    }}
+
+    const sh = document.createElement('div'); sh.className='msh';
+    const lb = document.createElement('div'); lb.className='mlb'; lb.textContent=ag.id;
+    wrap.appendChild(sh); wrap.appendChild(lb);
+    al.appendChild(wrap);
+
+    // ── Tooltip hover ──
+    const tt = document.getElementById('mr-tt');
+    wrap.addEventListener('mouseenter', (e) => {{
+      document.getElementById('tt-icon').textContent = ag.icon||'🤖';
+      document.getElementById('tt-name').textContent = ag.name||ag.id;
+      document.getElementById('tt-role').textContent = ag.role||'';
+      document.getElementById('tt-id').textContent = 'Zone: '+ag.id;
+      tt.style.display = 'block';
+    }});
+    wrap.addEventListener('mousemove', (e) => {{
+      const x = e.clientX + 14, y = e.clientY - 10;
+      tt.style.left = (x + 220 > window.innerWidth ? x - 234 : x) + 'px';
+      tt.style.top  = (y + 120 > window.innerHeight ? y - 110 : y) + 'px';
+    }});
+    wrap.addEventListener('mouseleave', () => {{
+      tt.style.display = 'none';
+    }});
+
+    const fp = randFloor();
+    states.push({{
+      el:wrap, ag:ag, idx:i,
+      x:fp.x, y:fp.y, tx:fp.x, ty:fp.y,
+      vx:0, vy:0, dir:1, seated:false,
+      timer: Math.random()*150+60, mode:'walk'
+    }});
+  }});
+}}
+
+// ════════════════════════════════════════
+//  MODE SWITCH
+// ════════════════════════════════════════
+function setMRMode(m) {{
+  if (mrMode===m) return;
+  mrMode = m;
+  btnW.className = 'mr-btn walk'+(m==='walk'?' active':'');
+  btnM.className = 'mr-btn meet'+(m==='meet'?' active':'');
+
+  if (m==='walk') {{
+    sts.className=''; sts.textContent='💬 Agent เดินเล่นในห้องประชุม';
+    states.forEach(s => {{
+      s.mode='walk'; s.seated=false; s.el.classList.remove('seated');
+      const fp=randFloor(); s.tx=fp.x; s.ty=fp.y; s.timer=Math.random()*150+60;
+    }});
+  }} else {{
+    sts.className='meeting'; sts.textContent='🏛️ Agent กำลังเข้าที่นั่ง...';
+    const n=states.length;
+    states.forEach((s,i) => {{
+      s.mode='meet'; s.seated=false; s.el.classList.remove('seated');
+      const p=seatXY(i,n); s.tx=p.x; s.ty=p.y; s.timer=9999;
+    }});
+    setTimeout(()=>{{ if(mrMode==='meet') sts.textContent='✅ ทีม AI พร้อมแล้ว!'; }}, 5000);
+  }}
+}}
+
+// ════════════════════════════════════════
+//  POLL sessionStorage (auto-trigger)
+// ════════════════════════════════════════
+let lastBL=0;
+setInterval(()=>{{
+  try {{
+    const len=parseInt(sessionStorage.getItem('mr_brief_len')||'0');
+    if(len>3&&lastBL<=3) setMRMode('meet');
+    else if(len<=3&&lastBL>3) setMRMode('walk');
+    lastBL=len;
+  }} catch(e) {{}}
+}}, 500);
+
+// ════════════════════════════════════════
+//  ANIMATION LOOP
+// ════════════════════════════════════════
+function loop() {{
+  tick++;
+  const SPD_W = WW*0.00058;
+  const SPD_M = WW*0.00200;
+
+  states.forEach(s => {{
+    // walk: สุ่มเป้าใหม่เมื่อถึงจุด
+    if(s.mode==='walk') {{
+      s.timer--;
+      if(s.timer<=0) {{
+        const fp=randFloor(); s.tx=fp.x; s.ty=fp.y;
+        s.timer=Math.random()*200+80;
+      }}
+    }}
+
+    const dx=s.tx-s.x, dy=s.ty-s.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const spd=s.mode==='meet'?SPD_M:SPD_W;
+
+    if(dist>2) {{
+      let nx=s.x+(dx/dist)*spd;
+      let ny=s.y+(dy/dist)*spd;
+
+      // clamp ให้อยู่ใน floor box
+      nx=Math.max(FX1*WW+AGENT_W/2, Math.min(FX2*WW-AGENT_W/2, nx));
+      ny=Math.max(FY1*WH, Math.min(FY2*WH, ny));
+
+      // walk mode: อ้อม inner circle
+      if(s.mode==='walk' && inInner(nx,ny)) {{
+        // ดัน agent ออกจากศูนย์
+        const ex=nx-CX*WW, ey=ny-CY*WH;
+        const el=Math.sqrt(ex*ex+ey*ey)||1;
+        nx=s.x+(ex/el)*spd*1.5;
+        ny=s.y+(ey/el)*spd*1.5;
+        const fp=randFloor(); s.tx=fp.x; s.ty=fp.y; s.timer=40;
+      }}
+
+      s.vx=(nx-s.x); s.vy=(ny-s.y);
+      s.dir=s.vx<0?-1:1;
+      s.x=nx; s.y=ny;
+    }} else {{
+      s.vx=0; s.vy=0;
+      if(s.mode==='meet'&&!s.seated){{
+        s.seated=true; s.el.classList.add('seated');
+      }}
+    }}
+
+    const moving=Math.abs(s.vx)+Math.abs(s.vy)>0.05;
+    const bounce=moving?Math.abs(Math.sin(tick*0.28+s.idx*0.6))*4:0;
+
+    s.el.style.left = (s.x - AGENT_W/2) + 'px';
+    // เท้า agent = s.y เสมอ (ทั้ง walk และ seat)
+    // bounce เฉพาะตอน walk
+    const footOffset = s.seated ? 0 : bounce;
+    s.el.style.top  = (s.y - AGENT_H - footOffset) + 'px';
+    s.el.style.transform = `scaleX(${{s.dir}})`;
+    s.el.style.zIndex    = Math.round(s.y);
+  }});
+
+  requestAnimationFrame(loop);
+}}
+</script>
+</body>
+</html>"""
+
+# ════════════════════════════════════════════════
+#  Streamlit: hidden text_input เพื่อรับค่าจาก JS
+#  และ inject sessionStorage ให้ iframe
+# ════════════════════════════════════════════════
+import streamlit.components.v1 as _mr_components
+
+# ── CSS: บังคับ iframe เต็มจอกว้าง (ออกนอก column padding + sidebar) ──
+st.markdown("""
+<style>
+/* ── Full-bleed Meeting Room iframe ── */
+div[data-testid="stHtml"] > iframe,
+iframe[title="streamlit_components.v1.html.html"],
+section.main > div.block-container iframe:first-of-type {
+    position: relative !important;
+    left: 50% !important;
+    right: 50% !important;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    display: block !important;
+}
+/* กัน padding ของ block-container ไม่ให้บีบ iframe */
+section.main > div.block-container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 100% !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ── Render Meeting Room ──
+# Streamlit components.html ไม่รับ postMessage เสมอ
+# วิธีที่แน่นอนที่สุดคือตั้ง height สูงพอสำหรับทุก viewport
+# ภาพ aspect ratio = 984/1598 ≈ 0.616
+# viewport กว้างสุด ~1920px → height = 1920*0.616+44 ≈ 1228
+# ใช้ height=1100 เป็น safe value สำหรับ 1400-1600px viewport
+_mr_components.html(_MEETING_ROOM_HTML, height=1100, scrolling=False)
+
+# ── inject sessionStorage จาก Streamlit ──
+#  ใช้ st.markdown + JS วัดความยาวของ brief textarea
+#  แล้วเขียนลง sessionStorage ที่ iframe จะ poll
+st.markdown("""
+<script>
+(function injectMRBrief() {
+  function run() {
+    // หา textarea ที่น่าจะเป็นช่องบรีฟ (textarea ที่ยาวที่สุดหรือมี content)
+    const tas = document.querySelectorAll('textarea');
+    let maxLen = 0;
+    tas.forEach(ta => { if(ta.value.length > maxLen) maxLen = ta.value.length; });
+
+    // เขียนลง sessionStorage — iframe อ่านได้เพราะ same origin (localhost)
+    try {
+      sessionStorage.setItem('mr_brief_len', String(maxLen));
+    } catch(e) {}
+  }
+
+  // Run ทุก 600ms
+  setInterval(run, 600);
+
+  // ยังฟัง input events ด้วยเผื่อ fast typing
+  document.addEventListener('input', run, true);
+})();
+</script>
+""", unsafe_allow_html=True)
+
+st.markdown("<hr style='border-color:#1e293b;margin:4px 0 12px;'>", unsafe_allow_html=True)
 
 # ==========================================
 # 🏠 LAYOUT
@@ -1691,7 +2298,7 @@ with col_main:
                     st.session_state.ready_to_export = True; st.rerun()
             else:
                 doc = Document()
-                doc.add_heading("AQUALINE REPORT — V9.0 ULTRA", 0)
+                doc.add_heading("NIKAMO — SURINSTEP", 0)
                 doc.add_heading("รายละเอียดบรีฟ", 1)
                 # BUG7: ถ้า prompt_input หายหลัง rerun ให้ fallback จาก vault
                 _brief_for_export = prompt_input or current_data.get("brief", "")
