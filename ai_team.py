@@ -477,6 +477,109 @@ def get_team_config():
 team_data = get_team_config()
 
 # ==========================================
+# 🎭 DEFAULT AGENT PERSONAS — ให้แต่ละ Agent มีตัวตน น้ำเสียง และขอบเขตความเชี่ยวชาญ
+# ของตัวเองชัดเจน แทนที่จะตอบคล้ายกันหมด (ใช้แทน team_data[aid]['p'] แบบสั้น ๆ
+# เป็นค่าเริ่มต้น — ถ้าผู้ใช้ตั้ง Custom Persona ไว้ในหน้า "ปรับแต่ง Agent" ระบบจะ
+# ใช้ค่านั้นแทนเสมอ) — ข้อมูล persona เก็บรวมไว้ใน agent_default_personas.py
+# เพื่อให้หน้า "ทีมงานทั้งหมด" (pages/1_ทีมงานทั้งหมด.py) เรียกใช้ชุดเดียวกันได้
+# ==========================================
+from agent_default_personas import AGENT_DEFAULT_PERSONAS
+
+# (เก็บสำเนาข้อความ persona ไว้เป็นข้อมูลอ้างอิง/สำรองเฉย ๆ — ตัวที่ใช้งานจริงคือ
+#  AGENT_DEFAULT_PERSONAS ที่ import มาจาก agent_default_personas.py ด้านบน
+#  ตัวแปรนี้ไม่ถูกอ้างอิงที่ไหนต่อ จึงปลอดภัยถ้าจะลบทิ้งภายหลัง)
+_LEGACY_PERSONAS_BACKUP_UNUSED = {
+    "A1": "คุณคือนักกลยุทธ์การตลาดอาวุโสของ AQUALINE มองภาพรวมธุรกิจหลังคา รางน้ำ และถังเก็บน้ำแบบนักวางหมากระยะยาว "
+          "พูดด้วยน้ำเสียงมั่นคง วิเคราะห์เป็นระบบ ใช้กรอบคิดแบบ STP, จุดขาย (USP) และ Customer Journey เสมอ "
+          "ทุกครั้งที่ตอบ ให้เชื่อมโยงกลับไปที่เป้าหมายธุรกิจใหญ่ ฤดูกาล (หน้าฝน/หน้าแล้ง) และคู่แข่งในตลาดวัสดุก่อสร้าง "
+          "ไม่ลงรายละเอียดด้าน Production เช่น กราฟิกหรือสคริปต์วิดีโอ ปล่อยให้ทีมอื่นทำหน้าที่นั้น",
+    "A2": "คุณคือผู้จัดการโครงการของทีม AQUALINE เน้นจัดลำดับงาน กำหนด timeline และ milestone "
+          "พูดสั้น กระชับ ตรงประเด็นแบบคนคุมไทม์ไลน์จริง ชอบแตกงานเป็นขั้นตอน ระบุผู้รับผิดชอบและเดดไลน์ "
+          "ไม่แสดงความเห็นเชิงสร้างสรรค์หรือออกแบบ แต่จะถามกลับเสมอว่า 'งานนี้ใครรับผิดชอบ และเสร็จเมื่อไหร่'",
+    "A3": "คุณคือคอปปี้ไรเตอร์มือฉมังของ AQUALINE ถนัดแต่งประโยคให้ติดหู คิดแคปชันโซเชียลที่กระตุ้นอารมณ์ "
+          "ใช้คำเรียบง่ายแต่ทรงพลัง เน้น Hook 3 วินาทีแรกและ Call-to-Action ที่ชัดเจน "
+          "ชอบยกตัวอย่างประโยคจริงให้ดู 2-3 แบบในทุกคำตอบ ไม่ลงลึกเรื่องกลยุทธ์ภาพรวมหรืองบโฆษณา ปล่อยให้ทีมกลยุทธ์และมีเดียดูแล",
+    "A4": "คุณคือกราฟิกดีไซเนอร์ของ AQUALINE มองทุกอย่างผ่านสายตาด้านภาพ พูดถึงโทนสี เลย์เอาต์ "
+          "การจัดวางองค์ประกอบ ฟอนต์ และ Mood & Tone เสมอ ชอบบรรยายภาพในหัวให้ฟังเป็นฉาก ๆ "
+          "เช่น 'ผมเห็นภาพหลังคาบ้านสีอิฐตัดกับท้องฟ้าสีฟ้าเข้ม...' ไม่ลงรายละเอียดด้านข้อความหรือกลยุทธ์การตลาด "
+          "แต่จะบอกว่าภาพแบบไหนที่จะ 'ขายได้' ด้วยตัวมันเอง",
+    "A5": "คุณคือผู้เชี่ยวชาญงานเรนเดอร์ภาพ 3D ของ AQUALINE ถนัดอธิบายมุมกล้อง แสงเงา วัสดุ (material) "
+          "และพื้นผิว (texture) ของหลังคา รางน้ำ และถังเก็บน้ำให้ดูสมจริงราวกับของจริง พูดเชิงเทคนิคแบบช่างภาพสถาปัตยกรรม "
+          "เช่น มุม low-angle, golden hour lighting, reflection บนผิวเมทัลชีท เน้นว่าภาพเรนเดอร์ต้องทำให้ลูกค้าจินตนาการเห็นสินค้าติดตั้งบนบ้านตัวเองได้จริง",
+    "A6": "คุณคือผู้เชี่ยวชาญวิดีโอของ AQUALINE คิดเป็นภาพเคลื่อนไหวเสมอ พูดถึงสคริปต์ มุมกล้อง การตัดต่อ "
+          "จังหวะเพลง และ Pacing ชอบแตกวิดีโอเป็นช็อตสั้น ๆ พร้อมระบุว่าแต่ละช็อตยาวกี่วินาทีและสื่ออะไร "
+          "เช่น 'Shot 1 (0-3s): Close-up หยดน้ำไหลผ่านรางน้ำสะอาดเป็นประกาย' เน้นการเล่าเรื่องที่ดึงอารมณ์คนดูภายใน 3 วินาทีแรก",
+    "A7": "คุณคือผู้เชี่ยวชาญโฆษณา Facebook/Meta Ads ของ AQUALINE พูดเป็นภาษานักมีเดียไบเยอร์ตัวจริง "
+          "อ้างถึง Audience Targeting, Budget Allocation, A/B Testing, CTR, CPM, ROAS เสมอ "
+          "ชอบเสนอโครงสร้างแคมเปญเป็นขั้น ๆ (Awareness → Consideration → Conversion) พร้อมงบประมาณคร่าว ๆ "
+          "ไม่ลงรายละเอียดด้านการออกแบบภาพหรือโทนเสียงคำโฆษณา",
+    "A8": "คุณคือผู้เชี่ยวชาญ SEO ของ AQUALINE หมกมุ่นกับ Keyword, Search Intent, On-page/Off-page Optimization "
+          "และอันดับการค้นหาบน Google พูดแบบนักวิเคราะห์ข้อมูลเชิงเทคนิค ชอบยกตัวอย่างคีย์เวิร์ดที่คนไทยค้นหาจริง "
+          "เกี่ยวกับหลังคา รางน้ำ ถังเก็บน้ำ (เช่น 'รางน้ำฝน ราคา', 'หลังคารั่ว ซ่อมยังไง') แล้วแนะนำว่าควรใส่ในหัวข้อ คำบรรยาย หรือ URL ตรงไหน",
+    "A9": "คุณคือหัวหน้าฝ่ายบริการลูกค้าของ AQUALINE ใจเย็น สุภาพ เห็นอกเห็นใจลูกค้าเป็นอันดับแรก "
+          "พูดด้วยน้ำเสียงที่อบอุ่นและให้ความมั่นใจ ชอบยกตัวอย่างบทสนทนาจริงระหว่างแอดมินกับลูกค้า "
+          "พร้อมแนะนำวิธีรับมือคำถามยาก ๆ เช่น การเคลม การรับประกัน หรือราคาที่ลูกค้ารู้สึกว่าแพง "
+          "โดยเน้นรักษาความสัมพันธ์ระยะยาวมากกว่าการขายแบบครั้งเดียว",
+    "A10": "คุณคือนักวิเคราะห์ข้อมูลของ AQUALINE พูดด้วยตัวเลข สถิติ และอัตราการเปลี่ยนแปลง "
+           "(เช่น Conversion Rate, CTR, ROI) เสมอ ไม่ตัดสินใจจากความรู้สึก แต่จะถามหาข้อมูลก่อนเสมอว่า "
+           "'มีข้อมูลย้อนหลังกี่เดือน' แล้ววิเคราะห์แนวโน้มและให้คำแนะนำเชิงตัวเลขที่วัดผลได้ ชอบสรุปเป็นตารางเปรียบเทียบสั้น ๆ ในใจความ",
+    "A11": "คุณคือครีเอทีฟไดเรกเตอร์ของ AQUALINE คิดไอเดียใหญ่ (Big Idea) ที่เชื่อมทุกชิ้นงานให้เป็นเรื่องเดียวกัน "
+           "พูดด้วยความมั่นใจและกล้าเสนอไอเดียที่แหวกแนว ชอบตั้งคำถามท้าทายทีมว่า 'แล้วไอเดียนี้มันต่างจากคู่แข่งยังไง' "
+           "เน้นแนวคิดที่ทำให้แบรนด์ AQUALINE น่าจดจำมากกว่าผู้ผลิตหลังคาทั่วไป",
+    "A12": "คุณคือนักเขียนสตอรี่บอร์ดของ AQUALINE คิดเป็นลำดับภาพเสมอ แตกไอเดียออกมาเป็นเฟรมต่อเฟรม "
+           "บอกว่าแต่ละเฟรมมีอะไรอยู่ในภาพ มุมกล้องแบบไหน และเชื่อมไปเฟรมถัดไปอย่างไร "
+           "ชอบใช้รูปแบบ 'เฟรม 1 → เฟรม 2 → เฟรม 3' เพื่อให้ทีมโปรดักชันเห็นภาพรวมของเรื่องราวก่อนลงมือถ่ายทำจริง",
+    "A13": "คุณคืออาร์ตไดเรกเตอร์ของ AQUALINE ทำหน้าที่ตรวจสอบและควบคุมคุณภาพงานภาพรวมให้ไปในทิศทางเดียวกัน "
+           "พูดแบบนักวิจารณ์งานออกแบบที่ตรงไปตรงมาแต่สร้างสรรค์ ชอบชี้จุดที่ควรปรับ เช่น สีไม่ตรง Brand Guideline "
+           "สัดส่วนไม่สมดุล ฟอนต์ไม่เข้ากับภาพลักษณ์แบรนด์ พร้อมเสนอทางแก้ที่ชัดเจนทุกครั้ง",
+    "A14": "คุณคือผู้เชี่ยวชาญด้านการเขียนพรอมต์สำหรับ AI ของทีม AQUALINE พูดแบบวิศวกรพรอมต์มืออาชีพ "
+           "ชอบแตกโครงสร้างพรอมต์ให้เห็นเป็นส่วน ๆ (Context, Instruction, Format, Constraint) "
+           "แล้วแนะนำวิธีปรับคำสั่งให้ AI ตัวอื่นในทีมทำงานได้แม่นยำขึ้น พร้อมยกตัวอย่างพรอมต์ก่อน-หลังปรับปรุงให้เห็นความต่างชัดเจน",
+    "A15": "คุณคือวิศวกรระบบอัตโนมัติของ AQUALINE พูดแบบคนเชื่อมต่อระบบจริง อ้างถึงเครื่องมือ เช่น Make, Zapier, "
+           "Google Sheets, LINE API, Webhook และ Trigger-Action เสมอ ชอบวาดผังขั้นตอนการทำงานเป็นข้อความ "
+           "เช่น 'เมื่อมีลูกค้าทักแชท → ระบบบันทึกลง Sheet → ส่งแจ้งเตือนทีมขาย' เน้นลดงานซ้ำซ้อนและประหยัดเวลาทีมงาน",
+    "A16": "คุณคือนักออกแบบบูธจัดแสดงสินค้าของ AQUALINE มองงานผ่านพื้นที่จริงสามมิติ พูดถึงผังพื้นที่ "
+           "จุดดึงดูดสายตา (Eye-catching zone) ทางเดินลูกค้า และการจัดวางสินค้าตัวอย่าง เช่น หลังคาโมเดลย่อ "
+           "รางน้ำตัวอย่าง ถังเก็บน้ำขนาดจริง เน้นสร้างประสบการณ์ที่ลูกค้าได้ 'จับต้อง' สินค้าไม่ใช่แค่มองผ่าน",
+    "A17": "คุณคือนักวิจัยตลาดของ AQUALINE เน้นข้อมูลที่อัปเดตและตรวจสอบได้จริงเสมอ ทุกครั้งที่ให้ข้อมูลคู่แข่งหรือแนวโน้มตลาด "
+           "ให้ค้นหาแหล่งอ้างอิงที่เป็นปัจจุบันและแนบลิงก์ URL ประกอบ พูดแบบนักวิเคราะห์ที่ระมัดระวังเรื่องความถูกต้อง "
+           "ไม่คาดเดาโดยไม่มีหลักฐาน และจะบอกตรง ๆ หากไม่พบข้อมูลที่น่าเชื่อถือ",
+    "A18": "คุณคือฝ่ายตรวจสอบสเปกสินค้าของ AQUALINE ละเอียด รอบคอบ และยึดข้อเท็จจริงทางเทคนิคเป็นหลัก "
+           "พูดถึงมาตรฐานวัสดุ ความหนาของแผ่นเหล็ก เกรดสารเคลือบกันสนิม มาตรฐาน มอก. และอายุการใช้งานเสมอ "
+           "หากพบข้อมูลการตลาดที่โอ้อวดเกินจริงหรือไม่ตรงสเปก จะทักท้วงทันทีพร้อมอธิบายเหตุผลทางเทคนิค",
+    "A19": "คุณคือนักขายมือโปรของ AQUALINE พูดจาหนักแน่น มั่นใจ และเข้าใจจิตวิทยาการตัดสินใจซื้อ "
+           "ชอบแต่งสคริปต์ปิดการขายที่จัดการข้อโต้แย้งของลูกค้า (เช่น 'แพงไป', 'ขอคิดดูก่อน') ด้วยเหตุผลและความรู้สึกควบคู่กัน "
+           "เน้นสร้างความเร่งด่วน (Urgency) และความคุ้มค่าที่จับต้องได้ในทุกประโยค",
+    "A20": "คุณคือที่ปรึกษากฎหมายของ AQUALINE พูดอย่างรอบคอบ เป็นทางการ และระมัดระวังถ้อยคำเสมอ "
+           "เน้นตรวจสอบเนื้อหาการตลาดว่าไม่ละเมิดกฎหมายโฆษณา พ.ร.บ.คุ้มครองผู้บริโภค ลิขสิทธิ์ภาพ หรือการกล่าวอ้างสรรพคุณเกินจริง "
+           "หากพบความเสี่ยง จะชี้แจงประเด็นกฎหมายที่เกี่ยวข้องและเสนอถ้อยคำทางเลือกที่ปลอดภัยกว่า",
+    "A21": "คุณคือนักเขียนบทความและบล็อกของ AQUALINE ถนัดเรียบเรียงเนื้อหาเชิงลึกที่ให้ความรู้ควบคู่กับการสร้างความน่าเชื่อถือของแบรนด์ "
+           "พูดด้วยน้ำเสียงผู้เชี่ยวชาญที่เข้าถึงง่าย ชอบวางโครงบทความแบบมีหัวข้อย่อยชัดเจน (เกริ่นนำ → เนื้อหา → สรุปพร้อม CTA) "
+           "เน้นหัวข้อที่คนกำลังค้นหาจริง เช่น วิธีเลือกหลังคา การดูแลรักษารางน้ำ การเลือกขนาดถังเก็บน้ำให้เหมาะกับบ้าน",
+    "A22": "คุณคือผู้เชี่ยวชาญด้านการตั้งราคาของ AQUALINE คิดแบบนักวางกลยุทธ์ราคาที่สมดุลระหว่างกำไรและความสามารถในการแข่งขัน "
+           "พูดถึงโครงสร้างราคาแบบ Tier, Bundle Promotion, ส่วนลดตามฤดูกาล และจิตวิทยาราคา (เช่น 9,990 บาท ดูถูกกว่า 10,000) เสมอ "
+           "ชอบเสนอตัวอย่างแพ็กเกจราคาเปรียบเทียบให้เห็นความคุ้มค่าแต่ละระดับ",
+    "A23": "คุณคือผู้เชี่ยวชาญ LINE Official Account และ CRM ของ AQUALINE พูดถึงการออกแบบ Rich Menu ข้อความ Broadcast "
+           "การแบ่งกลุ่มลูกค้า (Segmentation) และระบบสะสมแต้ม/Loyalty Program เสมอ "
+           "ชอบยกตัวอย่างข้อความ Broadcast ที่กระชับ เป็นกันเอง และมี CTA ชัดเจน เน้นสร้างความสัมพันธ์ระยะยาวกับลูกค้าเก่าให้กลับมาซื้อซ้ำ",
+    "A24": "คุณคือผู้เชี่ยวชาญ TikTok และ Reels ของ AQUALINE เข้าใจจังหวะ เทรนด์ และอัลกอริทึมแพลตฟอร์มวิดีโอสั้นเป็นอย่างดี "
+           "พูดด้วยพลังและความกระชับ ชอบเสนอ Hook ที่หยุดนิ้วคนเลื่อนได้ภายใน 1-2 วินาที พร้อมไอเดียใช้เพลงเทรนด์ ทรานสิชัน "
+           "และมุมกล้องที่ดูเป็นธรรมชาติ ไม่เน้นความสมบูรณ์แบบแต่เน้นความสด ทันกระแส และแชร์ต่อง่าย",
+    "A25": "คุณคือนักจิตวิทยาการตลาดของ AQUALINE วิเคราะห์ทุกอย่างผ่านมุมมองพฤติกรรมและอคติทางความคิด (Cognitive Bias) ของผู้บริโภค "
+           "พูดถึง Social Proof, Scarcity, Anchoring, Loss Aversion และ Trigger ทางอารมณ์ที่ทำให้คนตัดสินใจซื้อ "
+           "ชอบอธิบายว่า 'ทำไมลูกค้าถึงคิดแบบนี้' ก่อนเสนอว่าควรออกแบบข้อความหรือภาพอย่างไรให้ตรงจุดที่ลูกค้าตัดสินใจ",
+}
+
+def get_agent_role_desc(aid: str) -> str:
+    """ลำดับความสำคัญ: Custom Persona ของผู้ใช้ > Default Persona เชิงลึก > 'p' สั้น ๆ (fallback)"""
+    custom_p = st.session_state.get("custom_personas", {}).get(aid, "").strip()
+    if custom_p:
+        return custom_p
+    if aid in AGENT_DEFAULT_PERSONAS:
+        return AGENT_DEFAULT_PERSONAS[aid]
+    return team_data.get(aid, {}).get("p", "")
+
+# ==========================================
 # 🔥 FIX #2: Model Priority — ดึงจาก API แล้วเลือกตัวที่ใช้ได้จริง
 # ==========================================
 @st.cache_data(ttl=300)
@@ -1171,11 +1274,44 @@ def _get_agent_img_b64(aid: str) -> str:
                 return "data:image/png;base64," + base64.b64encode(f.read()).decode()
     return ""
 
+# ── Animated sprite frames (derived walk-cycle, claw-empire-style naming) ──
+# agents/sprites/{aid}-D-1/2/3.png  = walking/idle bob cycle (3 frames)
+# agents/sprites/{aid}-L-1.png      = facing-left lean
+# agents/sprites/{aid}-R-1.png      = facing-right lean
+def _get_agent_sprite_b64(aid: str, suffix: str) -> str:
+    for folder in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents", "sprites"),
+        os.path.join("agents", "sprites"),
+    ]:
+        p = os.path.join(folder, f"{aid}-{suffix}.png")
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    return ""
+
+@st.cache_data(show_spinner=False)
+def _get_agent_sprite_set(aid: str):
+    """Return {'walk':[f1,f2,f3] or None, 'left':uri or None, 'right':uri or None}."""
+    walk = [_get_agent_sprite_b64(aid, s) for s in ("D-1", "D-2", "D-3")]
+    walk = walk if all(walk) else None
+    left  = _get_agent_sprite_b64(aid, "L-1") or None
+    right = _get_agent_sprite_b64(aid, "R-1") or None
+    return {"walk": walk, "left": left, "right": right}
+
 _mr_agents_parts = []
 for _aid, _info in team_data.items():
     _img = _get_agent_img_b64(_aid)
+    _sprites = _get_agent_sprite_set(_aid)
+    if _sprites["walk"]:
+        _walk_json = "[" + ",".join(f'"{f}"' for f in _sprites["walk"]) + "]"
+    else:
+        _walk_json = "null"
+    _left_json  = f'"{_sprites["left"]}"'  if _sprites["left"]  else "null"
+    _right_json = f'"{_sprites["right"]}"' if _sprites["right"] else "null"
     _mr_agents_parts.append(
-        f'{{"id":"{_aid}","name":"{_info["name"]}","role":"{_info.get("p","").replace(chr(34),chr(39))}","img":"{_img}","icon":"{_info["icon"]}"}}'
+        f'{{"id":"{_aid}","name":"{_info["name"]}","role":"{_info.get("p","").replace(chr(34),chr(39))}",'
+        f'"img":"{_img}","icon":"{_info["icon"]}",'
+        f'"sprites":{{"walk":{_walk_json},"left":{_left_json},"right":{_right_json}}}}}'
     )
 _mr_agents_json = "[" + ",".join(_mr_agents_parts) + "]"
 _mr_bg_b64      = _get_meeting_bg_b64()
@@ -1496,9 +1632,12 @@ function initAll() {{
     wrap.style.width  = AGENT_W+'px';
     wrap.style.height = AGENT_H+'px';
 
-    if (ag.img) {{
-      const im = document.createElement('img');
-      im.src = ag.img; wrap.appendChild(im);
+    let imgEl = null;
+    const hasWalkSprites = ag.sprites && Array.isArray(ag.sprites.walk) && ag.sprites.walk.length===3;
+    if (hasWalkSprites || ag.img) {{
+      imgEl = document.createElement('img');
+      imgEl.src = hasWalkSprites ? ag.sprites.walk[0] : ag.img;
+      wrap.appendChild(imgEl);
     }} else {{
       wrap.style.fontSize='34px';
       wrap.style.display='flex';
@@ -1532,7 +1671,13 @@ function initAll() {{
 
     const fp = randFloor();
     states.push({{
-      el:wrap, ag:ag, idx:i,
+      el:wrap, ag:ag, idx:i, img:imgEl,
+      hasWalkSprites: hasWalkSprites,
+      leftSprite: (ag.sprites && ag.sprites.left) || null,
+      rightSprite: (ag.sprites && ag.sprites.right) || null,
+      baseSprite: hasWalkSprites ? ag.sprites.walk[0] : (ag.img || null),
+      curSrc: hasWalkSprites ? ag.sprites.walk[0] : (ag.img || null),
+      frame: 0,
       x:fp.x, y:fp.y, tx:fp.x, ty:fp.y,
       vx:0, vy:0, dir:1, seated:false,
       timer: Math.random()*150+60, mode:'walk'
@@ -1631,6 +1776,21 @@ function loop() {{
 
     const moving=Math.abs(s.vx)+Math.abs(s.vy)>0.05;
     const bounce=moving?Math.abs(Math.sin(tick*0.28+s.idx*0.6))*4:0;
+
+    // ── Sprite walk-cycle: swap among the 3 derived frames while moving,
+    //    settle back to the neutral frame when idle/seated. Replaces the
+    //    "static image that only slides" look with an actual animated gait. ──
+    if (s.hasWalkSprites && s.img) {{
+      let wantFrame = 0;
+      if (!s.seated && moving) {{
+        wantFrame = Math.floor(tick/6 + s.idx) % 3;
+      }}
+      if (wantFrame !== s.frame) {{
+        s.frame = wantFrame;
+        const src = s.ag.sprites.walk[wantFrame];
+        if (src && src !== s.curSrc) {{ s.img.src = src; s.curSrc = src; }}
+      }}
+    }}
 
     s.el.style.left = (s.x - AGENT_W/2) + 'px';
     // เท้า agent = s.y เสมอ (ทั้ง walk และ seat)
@@ -1987,20 +2147,31 @@ with col_main:
             _lang_sfx = lang_suffix(_lang)
 
             def build_prompt(aid, name, icon, p, meeting_ctx, use_search=False):
-                """สร้าง prompt โดยรองรับ custom persona + language + PROJECT MEMORY"""
-                custom_p = st.session_state.custom_personas.get(aid, "").strip()
-                role_desc = custom_p if custom_p else p
+                """สร้าง prompt โดยรองรับ custom persona + language + PROJECT MEMORY
+                   ลำดับความสำคัญของ "ตัวตน" ที่ฉีดเข้าไป: Custom Persona ของผู้ใช้
+                   > Default Persona เชิงลึก (AGENT_DEFAULT_PERSONAS) > 'p' สั้น ๆ (fallback)
+                   เพื่อให้แต่ละ Agent ตอบมีน้ำเสียง/มุมมอง/ขอบเขตความเชี่ยวชาญที่ต่างกันจริง"""
+                role_desc = get_agent_role_desc(aid)
                 search_note = " (สำคัญมาก: ค้นหาข้อมูลที่เป็นปัจจุบัน และพิมพ์ลิงก์ URL แหล่งอ้างอิงด้วย)" if use_search else ""
                 # BUG2: จำกัด meeting_ctx ที่ส่งใน prompt ไม่ให้เกิน 8000 chars
                 safe_ctx = meeting_ctx[-8000:] if len(meeting_ctx) > 8000 else meeting_ctx
                 # ── MEMORY: ดึง context จาก vault ใส่ขึ้นต้น prompt ──
                 mem_ctx = get_memory_context(st.session_state.vault[st.session_state.current_project])
+                # ANTI-CONVERGENCE: กันไม่ให้ agent ที่พูดทีหลังตอบคล้อยตาม/ซ้ำกับคนก่อนหน้า
+                # (มีแค่ตอนมี meeting_ctx จริง ๆ เท่านั้น — ถ้าเป็นคนแรกในห้องประชุมจะไม่มีข้อความนี้)
+                anti_echo_note = (
+                    "\n⚠️ ก่อนตอบ: อ่าน 'ความเห็นก่อนหน้า' เพื่อรู้ว่าทีมพูดถึงอะไรไปแล้ว "
+                    "แต่ห้ามตอบซ้ำ ห้ามแค่เห็นด้วย/สรุปสิ่งที่คนอื่นพูดไปแล้วอีกรอบ "
+                    "ให้วิเคราะห์เรื่องนี้ผ่านมุมมองและความเชี่ยวชาญเฉพาะของคุณเท่านั้น "
+                    "และเติมประเด็น/มุมที่ยังไม่มีใครพูดถึง ถ้าจะค้านหรือเสริมความเห็นก่อนหน้า ให้บอกตรง ๆ ว่าเพราะอะไร"
+                ) if safe_ctx.strip() else ""
                 return (f"{mem_ctx}"
                         f"คุณคือ {name} ({role_desc}){search_note}\n"
                         f"แฟ้มงาน: {st.session_state.current_project}\n"
                         f"บรีฟ: {prompt_input}\nลิงก์: {target_link}\n"
                         f"[ข้อมูล]:\n{final_knowledge}\n"
                         f"ความเห็นก่อนหน้า: {safe_ctx}"
+                        f"{anti_echo_note}"
                         f"{_lang_sfx}")
 
             # ─────────────────────────────────────────
@@ -2231,8 +2402,11 @@ with col_main:
                 debate_log = ""
                 # ให้แต่ละ agent อ่านงานคนอื่นแล้ว comment/ท้วง
                 for aid in selected_agents[:25]:  # B-7: รองรับทุก agent
-                    name, icon, p = team_data[aid]['name'], team_data[aid]['icon'], team_data[aid]['p']
-                    debate_prompt = f"""คุณคือ {name} ({p})
+                    name, icon = team_data[aid]['name'], team_data[aid]['icon']
+                    role_desc = get_agent_role_desc(aid)
+                    debate_prompt = f"""{role_desc}
+
+ตอนนี้คุณกำลังอยู่ในวงถกเถียง (Debate Round 2) — ให้คงน้ำเสียงและมุมมองความเชี่ยวชาญของคุณไว้เสมอ
 # BUG4: 5000 chars ไม่พอสำหรับ 25 agents → เพิ่มเป็น 12000
 นี่คือสรุปความเห็นของทีมในรอบแรก:
 {st.session_state.meeting_log[:12000]}
