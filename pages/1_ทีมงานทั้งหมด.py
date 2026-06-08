@@ -9,6 +9,19 @@ try:
 except ImportError:
     pass
 
+# 🎭 Default personas ที่มีน้ำเสียง/มุมมองความเชี่ยวชาญต่างกันชัดเจนต่อ Agent
+# (ใช้ชุดเดียวกับ ai_team.py ผ่านไฟล์กลาง agent_default_personas.py)
+try:
+    from agent_default_personas import AGENT_DEFAULT_PERSONAS, get_agent_role_desc
+except ImportError:
+    AGENT_DEFAULT_PERSONAS = {}
+    def get_agent_role_desc(aid, custom_personas=None, fallback_p=""):
+        if custom_personas:
+            cp = (custom_personas.get(aid, "") or "").strip()
+            if cp:
+                return cp
+        return fallback_p
+
 st.set_page_config(page_title="Virtual Office & Team Chat", layout="wide")
 
 # ══════════════════════════════════════════════════════════════════
@@ -106,6 +119,26 @@ def agent_b64(aid: str) -> str:
             return "data:image/png;base64," + base64.b64encode(f.read()).decode()
     return ""
 
+# ── Animated sprite frames (derived walk-cycle, claw-empire-style naming) ──
+# agents/sprites/{aid}-D-1/2/3.png  = walking/idle bob cycle (3 frames)
+# agents/sprites/{aid}-L-1.png      = facing-left lean
+# agents/sprites/{aid}-R-1.png      = facing-right lean
+def agent_sprite_b64(aid: str, suffix: str) -> str:
+    path = os.path.join("agents", "sprites", f"{aid}-{suffix}.png")
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    return ""
+
+@st.cache_data(show_spinner=False)
+def agent_sprite_set(aid: str):
+    """Return {'walk':[f1,f2,f3] or None, 'left':uri or None, 'right':uri or None}."""
+    walk = [agent_sprite_b64(aid, s) for s in ("D-1", "D-2", "D-3")]
+    walk = walk if all(walk) else None
+    left  = agent_sprite_b64(aid, "L-1") or None
+    right = agent_sprite_b64(aid, "R-1") or None
+    return {"walk": walk, "left": left, "right": right}
+
 def get_bg_b64() -> str:
     path = os.path.join("assets", "office_bg.jpg")
     if os.path.exists(path):
@@ -118,9 +151,14 @@ def get_bg_b64() -> str:
 agents_json_parts = []
 for aid, info in AGENTS.items():
     b64 = agent_b64(aid)
+    _spr = agent_sprite_set(aid)
+    _walk_json  = "[" + ",".join(f'"{f}"' for f in _spr["walk"]) + "]" if _spr["walk"] else "null"
+    _left_json  = f'"{_spr["left"]}"'  if _spr["left"]  else "null"
+    _right_json = f'"{_spr["right"]}"' if _spr["right"] else "null"
     agents_json_parts.append(
         f'{{"id":"{aid}","name":"{info["name"]}","role":"{info["p"]}","rarity":"{info["rarity"]}",'
-        f'"icon":"{info["icon"]}","img":"{b64}","zone":"{info["zone"]}"}}'
+        f'"icon":"{info["icon"]}","img":"{b64}","zone":"{info["zone"]}",'
+        f'"sprites":{{"walk":{_walk_json},"left":{_left_json},"right":{_right_json}}}}}'
     )
 agents_json = "[" + ",".join(agents_json_parts) + "]"
 bg_base64 = get_bg_b64()
@@ -164,10 +202,16 @@ def build_parts(processed_files, user_msg):
 def call_team_agent_stream(agent_id, team_history, user_msg, processed_files=None):
     info, model = AGENTS[agent_id], get_best_model(API_KEY)
     context_str = "ประวัติการสนทนาในห้องแชทล่าสุด:\n" + "".join([f"{'Boss (คุณ)' if m['role']=='user' else f'[{m.get('agent','')}] {AGENTS.get(m.get('agent',''),{}).get('name','')}'}: {m['text']}\n" for m in team_history[-6:]]) if team_history else ""
-    # 🧬 ใช้ Custom Persona จากหน้า 13 ถ้ามี ไม่งั้นใช้ default
+    # 🧬 ลำดับ "ตัวตน" ที่ใช้สร้าง system prompt: Custom Persona (หน้า 13)
+    # > Default Persona เชิงลึกเฉพาะแต่ละ Agent (agent_default_personas.py)
+    # > คำอธิบายสั้น ๆ ของ Agent (fallback) — เพื่อให้แต่ละตัวตอบมีน้ำเสียง/มุมมองต่างกันจริง
     _personas = load_custom_personas()
-    custom_p = _personas.get(agent_id, "").strip()
-    system = custom_p if custom_p else f"คุณคือ {info['name']} ({info['p']}) ของทีม AQUALINE STUDIO\nตอบในมุมมองและหน้าที่ของคุณเท่านั้น! เป็นภาษาไทย กระชับ ตรงประเด็น"
+    role_desc = get_agent_role_desc(
+        agent_id,
+        custom_personas=_personas,
+        fallback_p=f"{info['name']} ({info['p']}) ของทีม AQUALINE STUDIO"
+    )
+    system = f"{role_desc}\nตอบในมุมมองและหน้าที่ของคุณเท่านั้น! เป็นภาษาไทย กระชับ ตรงประเด็น"
     url = f"https://generativelanguage.googleapis.com/v1beta/{model}:streamGenerateContent?alt=sse&key={API_KEY}"
     try:
         with requests.post(url, json={"system_instruction":{"parts":[{"text":system}]}, "contents":[{"role":"user","parts":build_parts(processed_files or [], f"{context_str}\n\nคำสั่งล่าสุดจาก Boss: {user_msg}")}], "generationConfig":{"temperature":0.8,"maxOutputTokens":4096}}, stream=True, timeout=180) as resp:
@@ -378,7 +422,13 @@ with col_office:
     function initAgents() {{
         AGENTS.forEach((ag, i) => {{
           const wrap = document.createElement('div'); wrap.className = 'asp'; wrap.dataset.id = ag.id;
-          if (ag.img) {{ const im = document.createElement('img'); im.src = ag.img; wrap.appendChild(im); }}
+          const hasWalkSprites = ag.sprites && Array.isArray(ag.sprites.walk) && ag.sprites.walk.length===3;
+          let imgEl = null;
+          if (hasWalkSprites || ag.img) {{
+            imgEl = document.createElement('img');
+            imgEl.src = hasWalkSprites ? ag.sprites.walk[0] : ag.img;
+            wrap.appendChild(imgEl);
+          }}
           const sh = document.createElement('div'); sh.className = 'ash';
           const lb = document.createElement('div'); lb.className = 'albl'; lb.textContent = ag.id;
           wrap.appendChild(sh); wrap.appendChild(lb); al.appendChild(wrap);
@@ -390,12 +440,15 @@ with col_office:
           let startX = oldState ? oldState.x : (inCircle ? randPos('', true).x : getDeskPos(ag.zone).x);
           let startY = oldState ? oldState.y : (inCircle ? randPos('', true).y : getDeskPos(ag.zone).y);
 
-          const st = {{ 
-            el: wrap, ag: ag, 
-            x: startX, y: startY, 
+          const st = {{
+            el: wrap, ag: ag, img: imgEl,
+            hasWalkSprites: hasWalkSprites,
+            curSrc: hasWalkSprites ? ag.sprites.walk[0] : (ag.img || null),
+            frame: 0,
+            x: startX, y: startY,
             deskX: getDeskPos(ag.zone).x, deskY: getDeskPos(ag.zone).y,
-            tx: startX, ty: startY, vx: 0, vy: 0, dir: 1, 
-            mode: 'walk', 
+            tx: startX, ty: startY, vx: 0, vy: 0, dir: 1,
+            mode: 'walk',
             stateTimer: Math.random()*120 + 60,
             inCircle: inCircle
           }};
@@ -568,8 +621,18 @@ with col_office:
         if (dist > 2) {{ s.vx = (dx/dist) * spd; s.vy = (dy/dist) * spd; s.dir = s.vx < 0 ? -1 : 1; s.x += s.vx; s.y += s.vy; }} else {{ s.vx = 0; s.vy = 0; }}
         const isMoving = Math.abs(s.vx) > 0 || Math.abs(s.vy) > 0;
         let bounce = 0; if (isMoving) bounce = Math.abs(Math.sin(tick * 0.35)) * 2.5;
-        
-        s.el.style.left = (s.x - 30) + 'px'; 
+
+        if (s.hasWalkSprites && s.img) {{
+          let wantFrame = 0;
+          if (s.mode !== 'drag' && isMoving) {{ wantFrame = Math.floor(tick/6 + states.indexOf(s)) % 3; }}
+          if (wantFrame !== s.frame) {{
+            s.frame = wantFrame;
+            const src = s.ag.sprites.walk[wantFrame];
+            if (src && src !== s.curSrc) {{ s.img.src = src; s.curSrc = src; }}
+          }}
+        }}
+
+        s.el.style.left = (s.x - 30) + 'px';
         s.el.style.top = (s.y - 80 - bounce) + 'px';
         s.el.style.transform = `scaleX(${{s.dir}})`; s.el.style.zIndex = Math.round(s.y); 
       }});
