@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คู่มือการใช้งาน · Content Factory v3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070b12;
+    --bg2: #0d1117;
+    --bg3: #0f172a;
+    --border: #1e293b;
+    --border2: #334155;
+    --text: #cbd5e1;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --blue: #38bdf8;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --pink: #f472b6;
+    --red: #f87171;
+    --purple: #a78bfa;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Sarabun', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(180deg, #0a0f1a 0%, #070b12 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 52px 40px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent, transparent 80px,
+      rgba(56,189,248,.025) 80px, rgba(56,189,248,.025) 81px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent, transparent 80px,
+      rgba(56,189,248,.015) 80px, rgba(56,189,248,.015) 81px
+    );
+    pointer-events: none;
+  }
+  .header-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--blue);
+    border: 1px solid rgba(56,189,248,.3);
+    background: rgba(56,189,248,.08);
+    padding: 5px 16px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 18px;
+  }
+  .header h1 {
+    font-family: var(--mono);
+    font-size: 34px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+  }
+  .header h1 span { color: var(--text3); font-weight: 400; }
+  .header p {
+    color: var(--text2);
+    font-size: 14px;
+    font-family: var(--mono);
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .tag-row {
+    display: flex; gap: 8px; justify-content: center;
+    margin-top: 20px; flex-wrap: wrap;
+  }
+  .tag {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    padding: 4px 12px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .tag-b { background: rgba(56,189,248,.1); color: var(--blue); border: 1px solid rgba(56,189,248,.25); }
+  .tag-g { background: rgba(52,211,153,.1); color: var(--green); border: 1px solid rgba(52,211,153,.25); }
+  .tag-a { background: rgba(251,191,36,.1); color: var(--amber); border: 1px solid rgba(251,191,36,.25); }
+  .tag-p { background: rgba(167,139,250,.1); color: var(--purple); border: 1px solid rgba(167,139,250,.25); }
+  .tag-r { background: rgba(244,114,182,.1); color: var(--pink); border: 1px solid rgba(244,114,182,.25); }
+
+  /* ── NAV ── */
+  .toc {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 40px;
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .toc-label { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-right: 6px; text-transform: uppercase; letter-spacing: .08em; }
+  .toc a {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    color: var(--text3); text-decoration: none;
+    padding: 4px 10px; border-radius: 4px;
+    border: 1px solid var(--border);
+    transition: all .15s;
+  }
+  .toc a:hover { color: var(--blue); border-color: rgba(56,189,248,.4); background: rgba(56,189,248,.06); }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 840px; margin: 0 auto; padding: 48px 32px 80px; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 56px; }
+  .section-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 24px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--bg); background: var(--blue);
+    padding: 4px 10px; border-radius: 4px; flex-shrink: 0;
+  }
+  .section-num.green { background: var(--green); }
+  .section-num.amber { background: var(--amber); color: #1a0d00; }
+  .section-num.purple { background: var(--purple); }
+  .section-num.pink { background: var(--pink); }
+  .section-title { font-size: 20px; font-weight: 600; color: #f1f5f9; }
+  .section-sub { font-size: 13px; color: var(--text3); font-family: var(--mono); margin-left: auto; }
+
+  /* ── STEP ── */
+  .step {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .step:hover { border-color: var(--border2); }
+  .step-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    background: rgba(0,0,0,.25);
+    border-bottom: 1px solid var(--border);
+  }
+  .step-num {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--text3); min-width: 24px;
+  }
+  .step-icon { font-size: 18px; flex-shrink: 0; }
+  .step-title { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+  .step-req {
+    margin-left: auto; font-family: var(--mono); font-size: 10px;
+    padding: 3px 8px; border-radius: 3px;
+    background: rgba(248,113,113,.1); color: var(--red);
+    border: 1px solid rgba(248,113,113,.25);
+  }
+  .step-opt {
+    margin-left: auto; font-family: var(--mono); font-size: 10px;
+    padding: 3px 8px; border-radius: 3px;
+    background: rgba(100,116,139,.1); color: var(--text3);
+    border: 1px solid var(--border);
+  }
+  .step-body { padding: 16px 18px; }
+  .step-body p { color: var(--text2); font-size: 14px; margin-bottom: 10px; }
+  .step-body p:last-child { margin-bottom: 0; }
+
+  /* ── NOTE/TIP BOXES ── */
+  .note {
+    display: flex; gap: 10px; align-items: flex-start;
+    border-radius: 8px; padding: 12px 14px; margin: 10px 0;
+    font-size: 13px;
+  }
+  .note-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .note-text { line-height: 1.6; }
+  .note-blue { background: rgba(56,189,248,.07); border: 1px solid rgba(56,189,248,.2); color: #7dd3fc; }
+  .note-green { background: rgba(52,211,153,.07); border: 1px solid rgba(52,211,153,.2); color: #6ee7b7; }
+  .note-amber { background: rgba(251,191,36,.07); border: 1px solid rgba(251,191,36,.2); color: #fde68a; }
+  .note-red { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.2); color: #fca5a5; }
+
+  /* ── CODE ── */
+  .code-block {
+    background: #020409;
+    border: 1px solid #0f172a;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 10px 0;
+    white-space: pre-wrap;
+    line-height: 1.7;
+  }
+  .code-block .k { color: var(--blue); }
+  .code-block .v { color: var(--green); }
+  .code-block .c { color: var(--text3); }
+
+  /* ── FIELD TABLE ── */
+  .field-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  .field-table th {
+    font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text3); text-align: left;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+  }
+  .field-table td {
+    font-size: 13px; padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .field-table tr:last-child td { border-bottom: none; }
+  .field-table .fname { font-family: var(--mono); font-size: 12px; color: var(--blue); white-space: nowrap; }
+  .field-table .fdesc { color: var(--text2); }
+  .field-table .fex { color: var(--text3); font-size: 12px; font-style: italic; }
+  .badge-req { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; background: rgba(248,113,113,.15); color: var(--red); border: 1px solid rgba(248,113,113,.3); }
+  .badge-opt { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; background: rgba(100,116,139,.12); color: var(--text3); border: 1px solid var(--border); }
+
+  /* ── TOGGLE TABLE ── */
+  .toggle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
+  .toggle-item {
+    background: rgba(0,0,0,.3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .toggle-icon { font-size: 16px; flex-shrink: 0; }
+  .toggle-name { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+  .toggle-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ── OUTPUT CARDS ── */
+  .output-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
+  .output-card {
+    background: rgba(0,0,0,.3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .output-card .oc-icon { font-size: 18px; margin-bottom: 6px; }
+  .output-card .oc-name { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+  .output-card .oc-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+  /* ── PIPELINE MINI ── */
+  .pipeline {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; margin: 12px 0;
+    align-items: center;
+  }
+  .pipe-node {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    padding: 5px 10px; border-radius: 5px;
+    background: rgba(15,23,42,.9);
+    border: 1px solid var(--border); color: var(--text3);
+    white-space: nowrap;
+  }
+  .pipe-arrow-s { color: var(--border2); font-size: 12px; }
+
+  /* ── ZIP SECTION ── */
+  .zip-list { list-style: none; padding: 0; margin: 10px 0; }
+  .zip-list li {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text2); padding: 7px 0;
+    border-bottom: 1px solid rgba(30,41,59,.6);
+  }
+  .zip-list li:last-child { border-bottom: none; }
+  .zip-list .zfolder { font-family: var(--mono); font-size: 11px; color: var(--amber); min-width: 200px; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+  /* ── BIG CTA ── */
+  .cta-box {
+    background: linear-gradient(135deg, rgba(15,23,42,.95), rgba(7,11,18,.95));
+    border: 1px solid rgba(52,211,153,.3);
+    border-radius: 14px; padding: 28px 32px; text-align: center; margin-top: 48px;
+  }
+  .cta-title { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--green); margin-bottom: 8px; }
+  .cta-sub { font-size: 14px; color: var(--text2); }
+
+  /* ── SCROLL TOP ── */
+  .back-top {
+    display: block; text-align: center; margin-top: 40px;
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    text-decoration: none;
+  }
+  .back-top:hover { color: var(--blue); }
+
+  @media (max-width: 600px) {
+    .header { padding: 36px 20px 30px; }
+    .header h1 { font-size: 24px; }
+    .container { padding: 32px 16px 60px; }
+    .toggle-grid, .output-grid { grid-template-columns: 1fr; }
+    .toc { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header" id="top">
+  <div class="header-badge">USER GUIDE · STEP BY STEP</div>
+  <h1>CONTENT FACTORY <span>v3.0</span></h1>
+  <p>โยนรูปสินค้า + กรอกข้อมูล → AI สร้างทุกอย่าง → Download ZIP</p>
+  <div class="tag-row">
+    <span class="tag tag-b">GEMINI POWERED</span>
+    <span class="tag tag-g">15 NODES</span>
+    <span class="tag tag-a">TTS AUDIO</span>
+    <span class="tag tag-p">STORYBOARD</span>
+    <span class="tag tag-r">A/B TEST</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="toc">
+  <span class="toc-label">ไปที่:</span>
+  <a href="#pre">ก่อนเริ่ม</a>
+  <a href="#s1">1 · อัปโหลดรูป</a>
+  <a href="#s2">2 · Product Brief</a>
+  <a href="#s3">3 · ข้อมูลเว็บ</a>
+  <a href="#s4">4 · ตั้งค่า Output</a>
+  <a href="#s5">5 · เปิด/ปิด Nodes</a>
+  <a href="#s6">6 · RUN</a>
+  <a href="#s7">7 · ดูผลลัพธ์</a>
+  <a href="#s8">8 · Download ZIP</a>
+</nav>
+
+<div class="container">
+
+<!-- ══════ PRE-REQUISITE ══════ -->
+<section class="section" id="pre">
+  <div class="section-header">
+    <span class="section-num">PRE</span>
+    <h2 class="section-title">ก่อนเริ่มใช้งาน — ตั้งค่า API Key</h2>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">—</span>
+      <span class="step-icon">🔑</span>
+      <span class="step-title">ตั้งค่า Google API Key ใน Streamlit Secrets</span>
+      <span class="step-req">จำเป็น · ทำครั้งเดียว</span>
+    </div>
+    <div class="step-body">
+      <p>แอปนี้ใช้ <strong>Gemini API</strong> ของ Google เพื่อสร้าง content และ <strong>Imagen 3</strong> เพื่อ Gen ภาพ ต้องมี API Key ก่อนจะใช้งานได้</p>
+
+      <p><strong>ขั้นตอนขอ API Key:</strong></p>
+      <div class="note note-blue">
+        <span class="note-icon">1️⃣</span>
+        <span class="note-text">ไปที่ <code>https://aistudio.google.com/apikey</code> → Sign in ด้วย Google Account → กด <strong>Create API key</strong> → Copy key ที่ได้</span>
+      </div>
+      <div class="note note-blue">
+        <span class="note-icon">2️⃣</span>
+        <span class="note-text">เปิดไฟล์ <code>.streamlit/secrets.toml</code> ในโปรเจกต์ (ถ้าไม่มีให้สร้างใหม่) แล้วเพิ่มบรรทัดนี้:</span>
+      </div>
+      <div class="code-block"><span class="k">GOOGLE_API_KEY</span> = <span class="v">"AIzaSy...xxxxxx"</span>  <span class="c"># วาง key ของคุณตรงนี้</span></div>
+      <div class="note note-blue">
+        <span class="note-icon">3️⃣</span>
+        <span class="note-text">ถ้า Deploy บน <strong>Streamlit Cloud</strong> → ไปที่ Settings → Secrets → วาง <code>GOOGLE_API_KEY = "..."</code> แทน</span>
+      </div>
+      <div class="note note-amber">
+        <span class="note-icon">⚠️</span>
+        <span class="note-text"><strong>Imagen 3</strong> (Gen ภาพ AI) ต้องการ Google Cloud billing เปิดอยู่ ถ้ายังไม่เปิด แอปจะใช้รูปต้นฉบับที่คุณอัปโหลดแทนให้อัตโนมัติ — pipeline ไม่หยุด</span>
+      </div>
+      <div class="note note-green">
+        <span class="note-icon">✅</span>
+        <span class="note-text">ถ้าตั้งค่าถูกต้อง แอปจะโหลดขึ้นมาปกติ ไม่มี error แดง</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">—</span>
+      <span class="step-icon">📦</span>
+      <span class="step-title">ติดตั้ง Libraries ที่จำเป็น</span>
+      <span class="step-req">จำเป็น · ทำครั้งเดียว</span>
+    </div>
+    <div class="step-body">
+      <p>รัน command นี้ใน terminal ก่อน run แอป:</p>
+      <div class="code-block">pip install streamlit requests gtts</div>
+      <p>จากนั้น run แอปด้วย:</p>
+      <div class="code-block">streamlit run 8_Workflow_Builder_3.py</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 1 ══════ -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">อัปโหลดรูปภาพสินค้า</h2>
+    <span class="section-sub">NODE 01 · IMAGE INPUT</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">1.1</span>
+      <span class="step-icon">🖼️</span>
+      <span class="step-title">คลิกที่กล่อง "Browse files" หรือลาก-วางรูปลงมาเลย</span>
+      <span class="step-req">บังคับ</span>
+    </div>
+    <div class="step-body">
+      <p>ส่วนนี้อยู่ <strong>ซ้ายมือบนสุด</strong> ของหน้าเว็บ ในกล่อง <code>🖼️ NODE 01 · IMAGE INPUT</code></p>
+      <table class="field-table">
+        <tr><th>รูปแบบไฟล์</th><th>รายละเอียด</th></tr>
+        <tr><td class="fname">JPG / JPEG</td><td class="fdesc">รูปถ่ายสินค้าทั่วไป</td></tr>
+        <tr><td class="fname">PNG</td><td class="fdesc">รูปที่ต้องการพื้นหลังโปร่งใส</td></tr>
+        <tr><td class="fname">WEBP</td><td class="fdesc">รูปจากเว็บไซต์</td></tr>
+      </table>
+      <div class="note note-green">
+        <span class="note-icon">💡</span>
+        <span class="note-text"><strong>ยิ่งมากยิ่งดี</strong> — อัปหลายรูปได้ไม่จำกัด ถ้ามีรูปหลายมุม (ด้านหน้า ด้านข้าง close-up รายละเอียด) AI จะเข้าใจสินค้าได้ดีกว่ามาก</span>
+      </div>
+      <div class="note note-blue">
+        <span class="note-icon">ℹ️</span>
+        <span class="note-text">หลังอัปสำเร็จ จะเห็น preview รูปแสดงเป็น grid 4 คอลัมน์ และข้อความ <strong>✅ X ไฟล์พร้อม</strong> — ถ้าเห็นข้อนี้แสดงว่าขั้นตอนนี้เสร็จแล้ว</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 2 ══════ -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <span class="section-num green">02</span>
+    <h2 class="section-title">กรอก Product Brief</h2>
+    <span class="section-sub">📋 PRODUCT BRIEF</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">2.1</span>
+      <span class="step-icon">📝</span>
+      <span class="step-title">กรอกข้อมูลสินค้าในช่องต่างๆ</span>
+      <span class="step-req">บังคับ (2 ช่องแรก)</span>
+    </div>
+    <div class="step-body">
+      <p>กล่องนี้อยู่ใต้ IMAGE INPUT ฝั่งซ้าย ข้อมูลที่ใส่ตรงนี้จะถูกส่งเข้าทุก Node เพื่อสร้าง content ที่ตรงกับสินค้าจริงๆ</p>
+
+      <table class="field-table">
+        <tr>
+          <th>ช่อง</th>
+          <th>คำอธิบาย</th>
+          <th>ตัวอย่าง</th>
+        </tr>
+        <tr>
+          <td class="fname">ชื่อสินค้า *<br><span class="badge-req">บังคับ</span></td>
+          <td class="fdesc">ชื่อเต็มของสินค้า ใส่ให้ครบ รวมรุ่นและวัสดุ</td>
+          <td class="fex">รางน้ำฝน Prestige Series สแตนเลส 304</td>
+        </tr>
+        <tr>
+          <td class="fname">รายละเอียด / จุดเด่น *<br><span class="badge-req">บังคับ</span></td>
+          <td class="fdesc">ใส่ทุกจุดเด่นที่อยากโฆษณา คั่นด้วย · หรือขึ้นบรรทัดใหม่ ยิ่งละเอียดยิ่งดี</td>
+          <td class="fex">สแตนเลส 304 กันสนิม · ดีไซน์ Minimalist · ติดตั้งง่าย 30 นาที · รับประกัน 10 ปี</td>
+        </tr>
+        <tr>
+          <td class="fname">ราคา<br><span class="badge-opt">ไม่บังคับ</span></td>
+          <td class="fdesc">ราคาขายปัจจุบัน ใส่สัญลักษณ์เงินด้วยถ้ามี</td>
+          <td class="fex">฿3,990</td>
+        </tr>
+        <tr>
+          <td class="fname">โปรโมชัน<br><span class="badge-opt">ไม่บังคับ</span></td>
+          <td class="fdesc">โปรโมชันที่มี AI จะใส่เข้าใน CTA อัตโนมัติ</td>
+          <td class="fex">ลด 20% + ฟรีติดตั้ง</td>
+        </tr>
+        <tr>
+          <td class="fname">กลุ่มเป้าหมาย<br><span class="badge-opt">ไม่บังคับ</span></td>
+          <td class="fdesc">ระบุให้ชัดเจน ช่วยให้ Persona และ Tone ตรงมากขึ้น</td>
+          <td class="fex">เจ้าของบ้านรีโนเวท อายุ 30–45 ปี</td>
+        </tr>
+        <tr>
+          <td class="fname">แบรนด์ / เว็บไซต์<br><span class="badge-opt">ไม่บังคับ</span></td>
+          <td class="fdesc">ชื่อแบรนด์และลิงก์เว็บ จะถูกใส่ใน Ad Copy และ Caption</td>
+          <td class="fex">AQUALINE · aqualine.co.th</td>
+        </tr>
+      </table>
+
+      <div class="note note-amber">
+        <span class="note-icon">💡</span>
+        <span class="note-text">ถ้ากรอก "ชื่อสินค้า" และ "รายละเอียด" ไม่ครบ ปุ่ม RUN จะไม่ทำงาน — แอปจะแจ้ง error แดงให้เห็น</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 3 ══════ -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <span class="section-num amber">03</span>
+    <h2 class="section-title">วางข้อมูลจากเว็บ (ไม่บังคับ แต่แนะนำ)</h2>
+    <span class="section-sub">🌐 WEB DATA ANALYZER</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">3.1</span>
+      <span class="step-icon">📋</span>
+      <span class="step-title">Copy ข้อมูลจากเว็บ มาวางในกล่อง "ข้อมูลเพิ่มเติมจากเว็บ"</span>
+      <span class="step-opt">ไม่บังคับ</span>
+    </div>
+    <div class="step-body">
+      <p>กล่องนี้อยู่ใต้ช่องแบรนด์ใน Product Brief วางข้อมูลดิบอะไรก็ได้ เช่น:</p>
+      <ul style="margin: 8px 0 12px 18px; color: var(--text2); font-size: 14px; line-height: 2;">
+        <li>Spec จากหน้าสินค้าบนเว็บ</li>
+        <li>รีวิวจากลูกค้าบน Shopee / Lazada / Google</li>
+        <li>ข้อมูลสินค้าคู่แข่งที่อยากเปรียบเทียบ</li>
+        <li>คำถามที่คนถามบ่อยใน comment</li>
+        <li>ราคาจากหลายเจ้า</li>
+      </ul>
+      <div class="note note-blue">
+        <span class="note-icon">ℹ️</span>
+        <span class="note-text">วิธีเอาข้อมูล: เปิดเว็บสินค้า → Ctrl+A เลือกทั้งหน้า → Ctrl+C → มาวางในกล่องนี้ได้เลย ไม่ต้องจัดรูปแบบ</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">3.2</span>
+      <span class="step-icon">🔍</span>
+      <span class="step-title">กดปุ่ม "🔍 วิเคราะห์ข้อมูลเว็บ → สรุปไอเดียภาพ"</span>
+      <span class="step-opt">ถ้าวางข้อมูลไว้</span>
+    </div>
+    <div class="step-body">
+      <p>กดแล้วรอสัก 5–10 วินาที AI จะวิเคราะห์ข้อมูลดิบและสรุปออกมาเป็น 5 หัวข้อ:</p>
+      <div class="toggle-grid">
+        <div class="toggle-item">
+          <span class="toggle-icon">🎯</span>
+          <div><div class="toggle-name">จุดเด่นที่ขุดได้</div><div class="toggle-desc">สิ่งที่ AI เจอในข้อมูลที่ไม่ชัดเจนจากชื่อสินค้า</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">🖼️</span>
+          <div><div class="toggle-name">ไอเดีย Gen ภาพ 5 ข้อ</div><div class="toggle-desc">มุม องค์ประกอบ และอารมณ์ภาพที่แนะนำ</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">🎬</span>
+          <div><div class="toggle-name">Angle การขาย 3 แบบ</div><div class="toggle-desc">มุมที่ต่างจากคู่แข่ง ขุดได้จากข้อมูลจริง</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">💬</span>
+          <div><div class="toggle-name">Pain point ลูกค้า</div><div class="toggle-desc">ปัญหาจริงที่ลูกค้ามี ดึงมาจากรีวิว/คอมเมนต์</div></div>
+        </div>
+      </div>
+      <div class="note note-green">
+        <span class="note-icon">✅</span>
+        <span class="note-text">ผลวิเคราะห์จะแสดงในกล่องสีเขียว และ <strong>จะถูกส่งเข้าทุก Node โดยอัตโนมัติ</strong> เมื่อกด RUN — ไม่ต้องทำอะไรเพิ่ม</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 4 ══════ -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <span class="section-num purple">04</span>
+    <h2 class="section-title">ตั้งค่า Output Config</h2>
+    <span class="section-sub">⚙️ OUTPUT CONFIG</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">4.1</span>
+      <span class="step-icon">🎨</span>
+      <span class="step-title">เลือกสไตล์ภาพและจำนวนภาพที่ต้องการ Gen</span>
+    </div>
+    <div class="step-body">
+      <table class="field-table">
+        <tr><th>สไตล์</th><th>เหมาะกับ</th></tr>
+        <tr><td class="fname">Photorealistic · Product Studio</td><td class="fdesc">สินค้าทั่วไป ภาพดูเป็นมืออาชีพ</td></tr>
+        <tr><td class="fname">3D Render · CGI Premium</td><td class="fdesc">สินค้าเทค เครื่องใช้ไฟฟ้า</td></tr>
+        <tr><td class="fname">Cinematic · Dark Dramatic</td><td class="fdesc">สินค้า premium ภาพดูหนักแน่น</td></tr>
+        <tr><td class="fname">Minimalist · Clean White BG</td><td class="fdesc">ใช้ใน Shopee / Lazada</td></tr>
+        <tr><td class="fname">Lifestyle · In-Context Shot</td><td class="fdesc">แสดงสินค้าในการใช้งานจริง</td></tr>
+        <tr><td class="fname">Luxury · Gold & Dark</td><td class="fdesc">สินค้า luxury หรู</td></tr>
+      </table>
+      <p style="margin-top:10px;">Slider <strong>"จำนวนภาพที่จะ Gen"</strong> ปรับได้ 1–6 ภาพ — แนะนำ 3 ภาพสำหรับเริ่มต้น</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">4.2</span>
+      <span class="step-icon">🎬</span>
+      <span class="step-title">เลือก Format วิดีโอ, Tone, และภาษา Output</span>
+    </div>
+    <div class="step-body">
+      <table class="field-table">
+        <tr><th>ตัวเลือก</th><th>คำอธิบาย</th></tr>
+        <tr>
+          <td class="fname">รูปแบบวิดีโอ</td>
+          <td class="fdesc">TikTok/Reels 30วิ · 60วิ · YouTube Short · Product Demo 2นาที · Flash Sale 15วิ — Script ทุกอย่างจะถูกเขียนให้พอดีกับ format ที่เลือก</td>
+        </tr>
+        <tr>
+          <td class="fname">Tone</td>
+          <td class="fdesc">🔥 กระตุ้นซื้อ (กระชับ ร้อนแรง) · 💼 Professional · 😊 Friendly & Warm · ✨ Luxury · 🎯 Educational</td>
+        </tr>
+        <tr>
+          <td class="fname">ภาษา Output</td>
+          <td class="fdesc">ภาษาไทย · English · ภาษาไทย + English (ทุก Node จะตอบตามนี้)</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 5 ══════ -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <span class="section-num pink">05</span>
+    <h2 class="section-title">เปิด/ปิด Nodes ที่ต้องการ</h2>
+    <span class="section-sub">TOGGLE NODES</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">5.1</span>
+      <span class="step-icon">🔀</span>
+      <span class="step-title">Toggle เลือกว่าจะให้ AI สร้างอะไรบ้าง (ค่า default = เปิดทั้งหมด)</span>
+    </div>
+    <div class="step-body">
+      <p>มี 10 Nodes ที่ toggle ได้ (2 Nodes คือ Strategy และ Hashtag Bank จะรันเสมอ) ถ้าปิด Node ไหน AI จะข้ามไปเลย ประหยัดเวลา</p>
+
+      <div class="toggle-grid">
+        <div class="toggle-item">
+          <span class="toggle-icon">🎬</span>
+          <div><div class="toggle-name">Video Script</div><div class="toggle-desc">Script ทุก scene พร้อม Visual, VO, Music</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">🎞️</span>
+          <div><div class="toggle-name">Storyboard</div><div class="toggle-desc">ภาพนิ่งต่อ scene พร้อมมุมกล้อง Color Mood Text overlay</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">🔊</span>
+          <div><div class="toggle-name">TTS Audio</div><div class="toggle-desc">ไฟล์เสียง .mp3 จาก Voice Script (ใช้ gTTS)</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">📣</span>
+          <div><div class="toggle-name">Ad Copy</div><div class="toggle-desc">FB / TikTok / Google / LINE พร้อมใช้</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">📝</span>
+          <div><div class="toggle-name">Caption</div><div class="toggle-desc">Caption + Hashtag ทุกแพลตฟอร์ม + Shopee SEO</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">📧</span>
+          <div><div class="toggle-name">Email / LINE</div><div class="toggle-desc">Email launch + follow-up · LINE broadcast 2 แบบ</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">🧪</span>
+          <div><div class="toggle-name">A/B Test</div><div class="toggle-desc">2 version Hook+CTA + คำแนะนำวิธีทดสอบ</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">📅</span>
+          <div><div class="toggle-name">Content Calendar</div><div class="toggle-desc">แผนโพสต์รายวัน 30 วัน แบ่ง 4 สัปดาห์</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">⭐</span>
+          <div><div class="toggle-name">Review Script</div><div class="toggle-desc">Script รีวิวสั้น/ยาว + Testimonial template + ขอรีวิวลูกค้า</div></div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-icon">🔄</span>
+          <div><div class="toggle-name">Repurpose Pack</div><div class="toggle-desc">แปลง content เดียว → TikTok, IG, FB, Twitter, Blog, Shopee</div></div>
+        </div>
+      </div>
+
+      <div class="note note-amber">
+        <span class="note-icon">💡</span>
+        <span class="note-text"><strong>เริ่มต้นครั้งแรก</strong> — แนะนำเปิดทิ้งทุก Node ไว้ก่อน แล้วค่อยปิดที่ไม่ต้องการในครั้งถัดไป</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">5.2</span>
+      <span class="step-icon">📁</span>
+      <span class="step-title">ตั้งชื่อโฟลเดอร์ ZIP (ไม่บังคับ)</span>
+      <span class="step-opt">ไม่บังคับ</span>
+    </div>
+    <div class="step-body">
+      <p>ช่อง <strong>"ชื่อโฟลเดอร์ ZIP"</strong> อยู่ล่างสุดของ Output Config — ตั้งชื่อเพื่อให้จำง่ายเวลา download ลงมา เช่น <code>aqualine_march_2025</code></p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 6 ══════ -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">กดปุ่ม RUN CONTENT FACTORY</h2>
+    <span class="section-sub">🏭 RUN</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">6.1</span>
+      <span class="step-icon">🏭</span>
+      <span class="step-title">กดปุ่มใหญ่ "🏭 RUN CONTENT FACTORY"</span>
+      <span class="step-req">ขั้นตอนสำคัญ</span>
+    </div>
+    <div class="step-body">
+      <p>ปุ่มนี้อยู่ด้านล่างสุดของฝั่งซ้าย สีน้ำเงิน ขนาดใหญ่ กดได้เลย ถ้าข้อมูลครบ</p>
+
+      <div class="note note-red">
+        <span class="note-icon">❌</span>
+        <span class="note-text">ถ้าปุ่มกดไม่ได้ (สีจาง) แสดงว่ายังขาด: รูปภาพ หรือ ชื่อสินค้า หรือ รายละเอียดสินค้า — ให้กลับไปกรอกให้ครบก่อน</span>
+      </div>
+
+      <p style="margin-top:12px;"><strong>สิ่งที่จะเกิดขึ้นหลังกด:</strong></p>
+      <div class="note note-blue">
+        <span class="note-icon">⚡</span>
+        <span class="note-text">Progress bar จะขึ้นมาด้านขวา พร้อม Log Terminal แสดงสถานะ real-time ว่า AI ทำถึง Node ไหนแล้ว</span>
+      </div>
+      <div class="note note-blue">
+        <span class="note-icon">⚡</span>
+        <span class="note-text">Pipeline icons บนหน้าจะเปลี่ยนสีตาม: 🟡 Running → 🟢 Done → ⚪ Skip → 🔴 Error</span>
+      </div>
+      <div class="note note-amber">
+        <span class="note-icon">⏱️</span>
+        <span class="note-text"><strong>ระยะเวลา:</strong> ถ้าเปิดทุก Node ใช้เวลาประมาณ 3–8 นาที ขึ้นอยู่กับความเร็ว API ของ Google — อย่าปิดหน้าต่างระหว่างรอ</span>
+      </div>
+
+      <p style="margin-top:12px;"><strong>Pipeline ที่จะรันตามลำดับ:</strong></p>
+      <div class="pipeline">
+        <span class="pipe-node">🖼️ Input</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🧠 Strategy</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🎨 Gen Image</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🎞️ Storyboard</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🎬 Video Script</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🎤 Voice Script</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🔊 TTS Audio</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">📣 Ad Copy</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">📝 Caption</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">📧 Email/LINE</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">#️⃣ Hashtags</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🧪 A/B Test</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">📅 Calendar</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">⭐ Review</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">🔄 Repurpose</span><span class="pipe-arrow-s">›</span>
+        <span class="pipe-node">📦 ZIP</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 7 ══════ -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <span class="section-num green">07</span>
+    <h2 class="section-title">ดูผลลัพธ์และแก้ไข</h2>
+    <span class="section-sub">RIGHT PANEL · OUTPUTS</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">7.1</span>
+      <span class="step-icon">👀</span>
+      <span class="step-title">ผลลัพธ์จะแสดงด้านขวาทีละ Node ตามลำดับ</span>
+    </div>
+    <div class="step-body">
+      <p>เมื่อ Node ไหนเสร็จ ผลจะปรากฏด้านขวาทันที ไม่ต้องรอครบทุก Node ก็อ่านได้เลย</p>
+
+      <div class="output-grid">
+        <div class="output-card">
+          <div class="oc-icon">🎨</div>
+          <div class="oc-name">Generated Images</div>
+          <div class="oc-desc">รูปที่ AI Gen แสดงเป็น Grid ดาวน์โหลดได้ทีละรูปจากปุ่ม ⬇️ ใต้แต่ละภาพ</div>
+        </div>
+        <div class="output-card">
+          <div class="oc-icon">🧠</div>
+          <div class="oc-name">Marketing Strategy</div>
+          <div class="oc-desc">Positioning, Persona, Key Messages, Content Plan, SEO Keywords, Hook Ideas ฯลฯ</div>
+        </div>
+        <div class="output-card">
+          <div class="oc-icon">🎬</div>
+          <div class="oc-name">Video Script / Storyboard</div>
+          <div class="oc-desc">แก้ไขได้ใน text area โดยตรง ก่อน export ออกมา</div>
+        </div>
+        <div class="output-card">
+          <div class="oc-icon">🔊</div>
+          <div class="oc-name">TTS Audio</div>
+          <div class="oc-desc">เล่นเสียงได้ใน browser ทันที ไม่ต้อง download ก่อน</div>
+        </div>
+        <div class="output-card">
+          <div class="oc-icon">📣</div>
+          <div class="oc-name">Ad Copy / Caption</div>
+          <div class="oc-desc">copy-paste ได้ทันที หรือแก้ไขใน text area ก่อน export</div>
+        </div>
+        <div class="output-card">
+          <div class="oc-icon">📅</div>
+          <div class="oc-name">Calendar / Review / Repurpose</div>
+          <div class="oc-desc">แก้ไขได้ก่อน export แต่ละไฟล์มีปุ่ม ⬇️ ดาวน์โหลดแยก</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">7.2</span>
+      <span class="step-icon">✏️</span>
+      <span class="step-title">แก้ไข output ได้ในหน้าเดียวกัน (ก่อน download)</span>
+    </div>
+    <div class="step-body">
+      <p>ทุก text output มี <strong>text area ที่แก้ไขได้</strong> — แก้เสร็จแล้วค่อยกด ⬇️ export ทีหลัง ข้อมูลที่แก้จะถูกรวมไปใน ZIP ด้วย</p>
+      <div class="note note-green">
+        <span class="note-icon">💡</span>
+        <span class="note-text">ไม่ต้อง download ออกมาแก้นอก app — แก้ตรงในหน้าจอได้เลย แล้วค่อย download ZIP ที่ถูกต้องในขั้นตอนสุดท้าย</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ STEP 8 ══════ -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Download ZIP — ขั้นตอนสุดท้าย</h2>
+    <span class="section-sub">📦 EXPORT</span>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">8.1</span>
+      <span class="step-icon">📦</span>
+      <span class="step-title">กดปุ่มใหญ่ "📦 DOWNLOAD [ชื่อโฟลเดอร์].zip"</span>
+      <span class="step-req">ขั้นตอนสุดท้าย</span>
+    </div>
+    <div class="step-body">
+      <p>หลัง pipeline เสร็จทั้งหมด จะมีกล่องสีเขียว <strong>📦 CONTENT PACK READY</strong> และปุ่ม download ขึ้นมาด้านล่างสุดฝั่งขวา — กดเพื่อ download ไฟล์ ZIP ได้เลย</p>
+
+      <p style="margin-top:12px;"><strong>ภายใน ZIP มีไฟล์ครบ:</strong></p>
+      <ul class="zip-list">
+        <li><span class="zfolder">📁 images/</span>รูปที่ Gen แล้วทุกรูป (.png)</li>
+        <li><span class="zfolder">📁 audio/</span>ไฟล์เสียง Full voiceover + แยก scene (.mp3)</li>
+        <li><span class="zfolder">marketing_strategy.txt</span>กลยุทธ์การตลาด + Persona + SEO Keywords</li>
+        <li><span class="zfolder">storyboard.txt</span>Storyboard scene-by-scene</li>
+        <li><span class="zfolder">video_script.txt</span>Video Script ครบทุก scene</li>
+        <li><span class="zfolder">voice_script.txt</span>Voice Script + Full Read-Through</li>
+        <li><span class="zfolder">ad_copy.txt</span>Ad Copy (FB/TikTok/Google/LINE)</li>
+        <li><span class="zfolder">caption.txt</span>Caption + Hashtag ทุกแพลตฟอร์ม</li>
+        <li><span class="zfolder">email_line_broadcast.txt</span>Email launch/follow-up + LINE broadcast</li>
+        <li><span class="zfolder">hashtag_bank.txt</span>Hashtag Bank 50+ อัน แยกหมวด</li>
+        <li><span class="zfolder">ab_test.txt</span>A/B Test 2 version + Testing guide</li>
+        <li><span class="zfolder">content_calendar_30d.txt</span>แผนโพสต์รายวัน 30 วัน</li>
+        <li><span class="zfolder">review_ugc_script.txt</span>Script รีวิว + UGC template</li>
+        <li><span class="zfolder">repurpose_pack.txt</span>Content แปลงทุกแพลตฟอร์ม</li>
+        <li><span class="zfolder">README.txt</span>สารบัญไฟล์ทั้งหมดในโฟลเดอร์</li>
+      </ul>
+
+      <div class="note note-green">
+        <span class="note-icon">🎉</span>
+        <span class="note-text">เสร็จแล้ว! นำไฟล์ไปตัดต่อวิดีโอ โพสต์ลง social media ส่งให้ทีม หรือเก็บไว้ใช้ทีหลังได้เลย</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">8.2</span>
+      <span class="step-icon">↺</span>
+      <span class="step-title">ล้างข้อมูลและเริ่มสินค้าใหม่ด้วยปุ่ม "↺ Reset"</span>
+      <span class="step-opt">เมื่อต้องการเริ่มใหม่</span>
+    </div>
+    <div class="step-body">
+      <p>ปุ่ม <strong>↺ Reset</strong> อยู่ขวาของปุ่ม RUN — กดเพื่อล้าง output ทั้งหมดและเริ่มใหม่สำหรับสินค้าใหม่ ข้อมูลที่กรอกไว้ (ชื่อสินค้า, ราคา ฯลฯ) จะยังอยู่ แต่ผลลัพธ์ทั้งหมดจะถูกล้าง</p>
+      <div class="note note-red">
+        <span class="note-icon">⚠️</span>
+        <span class="note-text">กด Reset หลังจาก Download ZIP แล้วเท่านั้น — ถ้ากดก่อน download ผลลัพธ์ทั้งหมดจะหายไป</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SUMMARY CTA -->
+<div class="cta-box">
+  <div class="cta-title">🏭 สรุปขั้นตอนทั้งหมด</div>
+  <div class="cta-sub" style="margin-top:16px; text-align:left; max-width:560px; margin-left:auto; margin-right:auto; line-height:2.2; font-size:14px;">
+    <span style="color:var(--blue); font-family:var(--mono); font-weight:600;">PRE</span> &nbsp;ตั้งค่า API Key ใน secrets.toml (ครั้งเดียว)<br>
+    <span style="color:var(--green); font-family:var(--mono); font-weight:600;">01</span> &nbsp;อัปโหลดรูปสินค้า (ยิ่งมาก ยิ่งดี)<br>
+    <span style="color:var(--green); font-family:var(--mono); font-weight:600;">02</span> &nbsp;กรอก Product Brief ให้ครบ (ชื่อ + รายละเอียด บังคับ)<br>
+    <span style="color:var(--amber); font-family:var(--mono); font-weight:600;">03</span> &nbsp;(ถ้ามี) วางข้อมูลจากเว็บ → กดวิเคราะห์<br>
+    <span style="color:var(--purple); font-family:var(--mono); font-weight:600;">04</span> &nbsp;เลือกสไตล์ภาพ, format วิดีโอ, tone, ภาษา<br>
+    <span style="color:var(--pink); font-family:var(--mono); font-weight:600;">05</span> &nbsp;เปิด/ปิด Nodes ที่ต้องการ<br>
+    <span style="color:var(--blue); font-family:var(--mono); font-weight:600;">06</span> &nbsp;กด <strong style="color:#f1f5f9">🏭 RUN CONTENT FACTORY</strong> → รอ 3–8 นาที<br>
+    <span style="color:var(--green); font-family:var(--mono); font-weight:600;">07</span> &nbsp;ดูผล แก้ไขถ้าต้องการ<br>
+    <span style="color:var(--blue); font-family:var(--mono); font-weight:600;">08</span> &nbsp;กด <strong style="color:#f1f5f9">📦 DOWNLOAD ZIP</strong> → นำไปใช้ได้เลย
+  </div>
+</div>
+
+<a href="#top" class="back-top">↑ กลับด้านบน</a>
+
+</div><!-- /container -->
+</body>
+</html>

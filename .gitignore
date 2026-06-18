@@ -1,1 +1,12 @@
+# ไฟล์ลับ / credentials — ห้ามขึ้น GitHub เด็ดขาด
+credentials.json
+drive_token.json
 .streamlit/secrets.toml
+
+# ไฟล์ที่ python สร้างเอง ไม่จำเป็นต้องเก็บใน repo
+__pycache__/
+*.pyc
+
+# ไฟล์สำรองเก่า
+_backup_old_pages/
+*.bak
