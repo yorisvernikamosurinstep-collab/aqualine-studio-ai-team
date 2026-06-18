@@ -92,6 +92,10 @@ CACHE_FILE = "brief_cache.json"
 
 st.set_page_config(page_title="SURINSTEP", layout="wide", initial_sidebar_state="expanded")
 
+# 🧭 PAGE-VISIT MARKER — ให้หน้า "งานบริษัทอาควาไลน์" (Knowledge Graph) รู้ว่าผู้ใช้กำลัง
+# มาจากหน้าอื่น (เปิดหน้าใหม่จริง) ไม่ใช่แค่ rerun ภายในหน้าเดิม → ใช้ trigger auto-research
+st.session_state["_active_page"] = __file__
+
 # ==========================================
 # 🔴 FIX NEW-1: SESSION GUARD — ป้องกัน duplicate run
 # ==========================================
@@ -329,23 +333,30 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("""
-    <style>
-    .marquee-container { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 10px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.2); overflow: hidden; white-space: nowrap; width: 100%; position: relative; }
-    .marquee-content { display: inline-block; color: white; font-size: 30px; font-weight: 800; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); animation: marquee-scroll 20s linear infinite; }
-    @keyframes marquee-scroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-    </style>
-    <div class="marquee-container">
-        <div class="marquee-content">
-            "Design is not just what it looks like and feels like. Design is how it works."  &nbsp;&nbsp;&nbsp;&nbsp; "Design is not just what it looks like and feels like. Design is how it works."  &nbsp;&nbsp;&nbsp;&nbsp;  &nbsp;&nbsp;&nbsp;&nbsp; "Design is not just what it looks like and feels like. Design is how it works."  ❤️ 
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+from ui_settings import get_settings as _get_ui_settings, inject_global_font_css as _inject_font_css
+_ui = _get_ui_settings()
+st.markdown(_inject_font_css(), unsafe_allow_html=True)
 
-st.markdown("""
-    <h1 class="centered-title">🎯 SURINSTEP <span class="version-tag">32000</span></h1>
-    <p class="subtitle">Multi-Agent AI · Parallel Processing · Debate Mode · Smart Knowledge · Auto-Retry · Token Counter · PDF Export · AI Keywords</p>
-    """, unsafe_allow_html=True)
+_marquee_txt = _ui["marquee_text"]
+_marquee_color = _ui["marquee_color"]
+_marquee_speed = _ui["marquee_speed_sec"]
+st.markdown(f"""
+<style>
+.marquee-container {{ background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 10px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.2); overflow: hidden; white-space: nowrap; width: 100%; position: relative; }}
+.marquee-content {{ display: inline-block; color: {_marquee_color}; font-size: 30px; font-weight: 800; letter-spacing: 1.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); animation: marquee-scroll {_marquee_speed}s linear infinite; }}
+@keyframes marquee-scroll {{ 0% {{ transform: translateX(100vw); }} 100% {{ transform: translateX(-100%); }} }}
+</style>
+<div class="marquee-container">
+<div class="marquee-content">
+"{_marquee_txt}"  &nbsp;&nbsp;&nbsp;&nbsp; "{_marquee_txt}"  &nbsp;&nbsp;&nbsp;&nbsp;  &nbsp;&nbsp;&nbsp;&nbsp; "{_marquee_txt}"  ❤️
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""
+<h1 class="centered-title">{_ui["app_title"]}</h1>
+<p class="subtitle">Multi-Agent AI · Parallel Processing · Debate Mode · Smart Knowledge · Auto-Retry · Token Counter · PDF Export · AI Keywords</p>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 🗄️ PROJECT VAULT FUNCTIONS
@@ -441,134 +452,18 @@ def get_pixel_art(agent_id: str, size: int = 80) -> str:
     return f'<span style="font-size:32px">{agent_id}</span>'
 
 # ==========================================
-# 👥 TEAM CONFIG — V8: เพิ่ม 4 Agent ใหม่
+# 👥 TEAM CONFIG — สร้างจาก AGENT_META (agent_default_personas.py) ทุกตัว A1-A26
+# เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว แล้วทุกหน้าจะเห็นผลตามกันอัตโนมัติ
 # ==========================================
+from agent_default_personas import AGENT_DEFAULT_PERSONAS, AGENT_META, AGENT_IDS
+
 @st.cache_resource
 def get_team_config():
     return {
-        # ── กลุ่มเดิม ──
-        "A1": {"name": "นักกลยุทธ์การตลาด",     "icon": "👨‍💼", "p": "วางแผนภาพรวมและจุดขาย",                                          "pixel_art": get_pixel_art("A1"), "parallel": False},
-        "A2": {"name": "ผู้จัดการโครงการ",        "icon": "📋",  "p": "คุมเป้าหมายและเวลา",                                              "pixel_art": get_pixel_art("A2"), "parallel": False},
-        "A3": {"name": "นักเขียนคำโฆษณา",         "icon": "✍️",  "p": "สร้าง Content และ Caption โซเชียล",                               "pixel_art": get_pixel_art("A3"), "parallel": True},
-        "A4": {"name": "กราฟิกดีไซเนอร์",         "icon": "🎨",  "p": "ออกแบบ Visual",                                                   "pixel_art": get_pixel_art("A4"), "parallel": True},
-        "A5": {"name": "3D Visualizer",             "icon": "🏗️",  "p": "เรนเดอร์ภาพสินค้าจริง",                                          "pixel_art": get_pixel_art("A5"), "parallel": True},
-        "A6": {"name": "ผู้เชี่ยวชาญวิดีโอ",       "icon": "🎬",  "p": "สคริปต์และมุมกล้อง",                                              "pixel_art": get_pixel_art("A6"), "parallel": True},
-        "A7": {"name": "นักยิงแอด Facebook",        "icon": "📈",  "p": "วางแผนสื่อโฆษณา",                                                 "pixel_art": get_pixel_art("A7"), "parallel": False},
-        "A8": {"name": "ผู้เชี่ยวชาญ SEO",          "icon": "🌐",  "p": "ปรับแต่งเนื้อหาให้ติดอันดับ",                                     "pixel_art": get_pixel_art("A8"), "parallel": True},
-        "A9": {"name": "ฝ่ายบริการลูกค้า",         "icon": "💬",  "p": "วางแนวทางตอบคำถาม",                                               "pixel_art": get_pixel_art("A9"), "parallel": True},
-        "A10": {"name": "นักวิเคราะห์ข้อมูล",       "icon": "📊",  "p": "วิเคราะห์สถิติความคุ้มค่า",                                       "pixel_art": get_pixel_art("A10"), "parallel": True},
-        "A11": {"name": "ครีเอทีฟไดเรกเตอร์",       "icon": "💡",  "p": "คิดไอเดีย Big Idea",                                              "pixel_art": get_pixel_art("A11"), "parallel": False},
-        "A12": {"name": "คนเขียนสตอรี่บอร์ด",       "icon": "🎞️",  "p": "วางลำดับภาพเล่าเรื่อง",                                          "pixel_art": get_pixel_art("A12"), "parallel": True},
-        "A13": {"name": "อาร์ตไดเรกเตอร์",          "icon": "✨",  "p": "ควบคุมคุณภาพงานดีไซน์",                                          "pixel_art": get_pixel_art("A13"), "parallel": True},
-        "A14": {"name": "ผู้เชี่ยวชาญ AI Prompt",   "icon": "🤖",  "p": "ปรับจูนคำสั่งให้ AI",                                             "pixel_art": get_pixel_art("A14"), "parallel": True},
-        "A15": {"name": "นักวางระบบอัตโนมัติ",      "icon": "⚙️",  "p": "เชื่อมระบบ Automation",                                           "pixel_art": get_pixel_art("A15"), "parallel": True},
-        "A16": {"name": "นักออกแบบบูธ",             "icon": "🎪",  "p": "วางผังงานนิทรรศการ",                                              "pixel_art": get_pixel_art("A16"), "parallel": True},
-        "A17": {"name": "นักวิจัยตลาด",             "icon": "🔍",  "p": "เจาะลึกข้อมูลคู่แข่งแบบ Real-time พร้อมอ้างอิง URL",            "pixel_art": get_pixel_art("A17"), "parallel": False},
-        "A18": {"name": "ฝ่ายตรวจสเปกสินค้า",       "icon": "✅",  "p": "ตรวจสอบความถูกต้องทางเทคนิค",                                    "pixel_art": get_pixel_art("A18"), "parallel": True},
-        "A19": {"name": "นักขายมือโปร",             "icon": "💰",  "p": "สร้างสคริปต์ปิดการขาย",                                          "pixel_art": get_pixel_art("A19"), "parallel": True},
-        "A20": {"name": "ที่ปรึกษากฎหมาย",          "icon": "⚖️",  "p": "ตรวจสอบข้อบังคับและลิขสิทธิ์",                                  "pixel_art": get_pixel_art("A20"), "parallel": False},
-        "A21": {"name": "นักเขียนบทความและบล็อก",   "icon": "📝",  "p": "เขียนบทความยาว เนื้อหาเชิงลึก และบล็อกสำหรับเว็บไซต์",          "pixel_art": get_pixel_art("A21"), "parallel": True},
-        # ── FIX #4:  ใหม่ 4 ตัว ──
-        "A22": {"name": "นักวางราคา/Pricing",        "icon": "🧮",  "p": "วิเคราะห์ราคา ตั้ง Promo Bundle และโครงสร้าง Tier ราคา",        "pixel_art": get_pixel_art("A22"), "parallel": True},
-        "A23": {"name": "ผู้เชี่ยวชาญ LINE OA/CRM", "icon": "📱",  "p": "วางแผน LINE OA, Broadcast, CRM และ Loyalty Program",           "pixel_art": get_pixel_art("A23"), "parallel": True},
-        "A24": {"name": "TikTok & Reels Specialist",  "icon": "🎵",  "p": "สร้าง Hook, Trend, Script สำหรับ TikTok และ Reels โดยเฉพาะ",  "pixel_art": get_pixel_art("A24"), "parallel": True},
-        "A25": {"name": "นักจิตวิทยาการตลาด",       "icon": "🧠",  "p": "วิเคราะห์ Psychology ลูกค้า trigger การซื้อ และ Bias ต่างๆ",   "pixel_art": get_pixel_art("A25"), "parallel": False},
+        aid: {**meta, "pixel_art": get_pixel_art(aid)}
+        for aid, meta in AGENT_META.items()
     }
 team_data = get_team_config()
-
-# ==========================================
-# 🎭 DEFAULT AGENT PERSONAS — ให้แต่ละ Agent มีตัวตน น้ำเสียง และขอบเขตความเชี่ยวชาญ
-# ของตัวเองชัดเจน แทนที่จะตอบคล้ายกันหมด (ใช้แทน team_data[aid]['p'] แบบสั้น ๆ
-# เป็นค่าเริ่มต้น — ถ้าผู้ใช้ตั้ง Custom Persona ไว้ในหน้า "ปรับแต่ง Agent" ระบบจะ
-# ใช้ค่านั้นแทนเสมอ) — ข้อมูล persona เก็บรวมไว้ใน agent_default_personas.py
-# เพื่อให้หน้า "ทีมงานทั้งหมด" (pages/1_ทีมงานทั้งหมด.py) เรียกใช้ชุดเดียวกันได้
-# ==========================================
-from agent_default_personas import AGENT_DEFAULT_PERSONAS
-
-# (เก็บสำเนาข้อความ persona ไว้เป็นข้อมูลอ้างอิง/สำรองเฉย ๆ — ตัวที่ใช้งานจริงคือ
-#  AGENT_DEFAULT_PERSONAS ที่ import มาจาก agent_default_personas.py ด้านบน
-#  ตัวแปรนี้ไม่ถูกอ้างอิงที่ไหนต่อ จึงปลอดภัยถ้าจะลบทิ้งภายหลัง)
-_LEGACY_PERSONAS_BACKUP_UNUSED = {
-    "A1": "คุณคือนักกลยุทธ์การตลาดอาวุโสของ AQUALINE มองภาพรวมธุรกิจหลังคา รางน้ำ และถังเก็บน้ำแบบนักวางหมากระยะยาว "
-          "พูดด้วยน้ำเสียงมั่นคง วิเคราะห์เป็นระบบ ใช้กรอบคิดแบบ STP, จุดขาย (USP) และ Customer Journey เสมอ "
-          "ทุกครั้งที่ตอบ ให้เชื่อมโยงกลับไปที่เป้าหมายธุรกิจใหญ่ ฤดูกาล (หน้าฝน/หน้าแล้ง) และคู่แข่งในตลาดวัสดุก่อสร้าง "
-          "ไม่ลงรายละเอียดด้าน Production เช่น กราฟิกหรือสคริปต์วิดีโอ ปล่อยให้ทีมอื่นทำหน้าที่นั้น",
-    "A2": "คุณคือผู้จัดการโครงการของทีม AQUALINE เน้นจัดลำดับงาน กำหนด timeline และ milestone "
-          "พูดสั้น กระชับ ตรงประเด็นแบบคนคุมไทม์ไลน์จริง ชอบแตกงานเป็นขั้นตอน ระบุผู้รับผิดชอบและเดดไลน์ "
-          "ไม่แสดงความเห็นเชิงสร้างสรรค์หรือออกแบบ แต่จะถามกลับเสมอว่า 'งานนี้ใครรับผิดชอบ และเสร็จเมื่อไหร่'",
-    "A3": "คุณคือคอปปี้ไรเตอร์มือฉมังของ AQUALINE ถนัดแต่งประโยคให้ติดหู คิดแคปชันโซเชียลที่กระตุ้นอารมณ์ "
-          "ใช้คำเรียบง่ายแต่ทรงพลัง เน้น Hook 3 วินาทีแรกและ Call-to-Action ที่ชัดเจน "
-          "ชอบยกตัวอย่างประโยคจริงให้ดู 2-3 แบบในทุกคำตอบ ไม่ลงลึกเรื่องกลยุทธ์ภาพรวมหรืองบโฆษณา ปล่อยให้ทีมกลยุทธ์และมีเดียดูแล",
-    "A4": "คุณคือกราฟิกดีไซเนอร์ของ AQUALINE มองทุกอย่างผ่านสายตาด้านภาพ พูดถึงโทนสี เลย์เอาต์ "
-          "การจัดวางองค์ประกอบ ฟอนต์ และ Mood & Tone เสมอ ชอบบรรยายภาพในหัวให้ฟังเป็นฉาก ๆ "
-          "เช่น 'ผมเห็นภาพหลังคาบ้านสีอิฐตัดกับท้องฟ้าสีฟ้าเข้ม...' ไม่ลงรายละเอียดด้านข้อความหรือกลยุทธ์การตลาด "
-          "แต่จะบอกว่าภาพแบบไหนที่จะ 'ขายได้' ด้วยตัวมันเอง",
-    "A5": "คุณคือผู้เชี่ยวชาญงานเรนเดอร์ภาพ 3D ของ AQUALINE ถนัดอธิบายมุมกล้อง แสงเงา วัสดุ (material) "
-          "และพื้นผิว (texture) ของหลังคา รางน้ำ และถังเก็บน้ำให้ดูสมจริงราวกับของจริง พูดเชิงเทคนิคแบบช่างภาพสถาปัตยกรรม "
-          "เช่น มุม low-angle, golden hour lighting, reflection บนผิวเมทัลชีท เน้นว่าภาพเรนเดอร์ต้องทำให้ลูกค้าจินตนาการเห็นสินค้าติดตั้งบนบ้านตัวเองได้จริง",
-    "A6": "คุณคือผู้เชี่ยวชาญวิดีโอของ AQUALINE คิดเป็นภาพเคลื่อนไหวเสมอ พูดถึงสคริปต์ มุมกล้อง การตัดต่อ "
-          "จังหวะเพลง และ Pacing ชอบแตกวิดีโอเป็นช็อตสั้น ๆ พร้อมระบุว่าแต่ละช็อตยาวกี่วินาทีและสื่ออะไร "
-          "เช่น 'Shot 1 (0-3s): Close-up หยดน้ำไหลผ่านรางน้ำสะอาดเป็นประกาย' เน้นการเล่าเรื่องที่ดึงอารมณ์คนดูภายใน 3 วินาทีแรก",
-    "A7": "คุณคือผู้เชี่ยวชาญโฆษณา Facebook/Meta Ads ของ AQUALINE พูดเป็นภาษานักมีเดียไบเยอร์ตัวจริง "
-          "อ้างถึง Audience Targeting, Budget Allocation, A/B Testing, CTR, CPM, ROAS เสมอ "
-          "ชอบเสนอโครงสร้างแคมเปญเป็นขั้น ๆ (Awareness → Consideration → Conversion) พร้อมงบประมาณคร่าว ๆ "
-          "ไม่ลงรายละเอียดด้านการออกแบบภาพหรือโทนเสียงคำโฆษณา",
-    "A8": "คุณคือผู้เชี่ยวชาญ SEO ของ AQUALINE หมกมุ่นกับ Keyword, Search Intent, On-page/Off-page Optimization "
-          "และอันดับการค้นหาบน Google พูดแบบนักวิเคราะห์ข้อมูลเชิงเทคนิค ชอบยกตัวอย่างคีย์เวิร์ดที่คนไทยค้นหาจริง "
-          "เกี่ยวกับหลังคา รางน้ำ ถังเก็บน้ำ (เช่น 'รางน้ำฝน ราคา', 'หลังคารั่ว ซ่อมยังไง') แล้วแนะนำว่าควรใส่ในหัวข้อ คำบรรยาย หรือ URL ตรงไหน",
-    "A9": "คุณคือหัวหน้าฝ่ายบริการลูกค้าของ AQUALINE ใจเย็น สุภาพ เห็นอกเห็นใจลูกค้าเป็นอันดับแรก "
-          "พูดด้วยน้ำเสียงที่อบอุ่นและให้ความมั่นใจ ชอบยกตัวอย่างบทสนทนาจริงระหว่างแอดมินกับลูกค้า "
-          "พร้อมแนะนำวิธีรับมือคำถามยาก ๆ เช่น การเคลม การรับประกัน หรือราคาที่ลูกค้ารู้สึกว่าแพง "
-          "โดยเน้นรักษาความสัมพันธ์ระยะยาวมากกว่าการขายแบบครั้งเดียว",
-    "A10": "คุณคือนักวิเคราะห์ข้อมูลของ AQUALINE พูดด้วยตัวเลข สถิติ และอัตราการเปลี่ยนแปลง "
-           "(เช่น Conversion Rate, CTR, ROI) เสมอ ไม่ตัดสินใจจากความรู้สึก แต่จะถามหาข้อมูลก่อนเสมอว่า "
-           "'มีข้อมูลย้อนหลังกี่เดือน' แล้ววิเคราะห์แนวโน้มและให้คำแนะนำเชิงตัวเลขที่วัดผลได้ ชอบสรุปเป็นตารางเปรียบเทียบสั้น ๆ ในใจความ",
-    "A11": "คุณคือครีเอทีฟไดเรกเตอร์ของ AQUALINE คิดไอเดียใหญ่ (Big Idea) ที่เชื่อมทุกชิ้นงานให้เป็นเรื่องเดียวกัน "
-           "พูดด้วยความมั่นใจและกล้าเสนอไอเดียที่แหวกแนว ชอบตั้งคำถามท้าทายทีมว่า 'แล้วไอเดียนี้มันต่างจากคู่แข่งยังไง' "
-           "เน้นแนวคิดที่ทำให้แบรนด์ AQUALINE น่าจดจำมากกว่าผู้ผลิตหลังคาทั่วไป",
-    "A12": "คุณคือนักเขียนสตอรี่บอร์ดของ AQUALINE คิดเป็นลำดับภาพเสมอ แตกไอเดียออกมาเป็นเฟรมต่อเฟรม "
-           "บอกว่าแต่ละเฟรมมีอะไรอยู่ในภาพ มุมกล้องแบบไหน และเชื่อมไปเฟรมถัดไปอย่างไร "
-           "ชอบใช้รูปแบบ 'เฟรม 1 → เฟรม 2 → เฟรม 3' เพื่อให้ทีมโปรดักชันเห็นภาพรวมของเรื่องราวก่อนลงมือถ่ายทำจริง",
-    "A13": "คุณคืออาร์ตไดเรกเตอร์ของ AQUALINE ทำหน้าที่ตรวจสอบและควบคุมคุณภาพงานภาพรวมให้ไปในทิศทางเดียวกัน "
-           "พูดแบบนักวิจารณ์งานออกแบบที่ตรงไปตรงมาแต่สร้างสรรค์ ชอบชี้จุดที่ควรปรับ เช่น สีไม่ตรง Brand Guideline "
-           "สัดส่วนไม่สมดุล ฟอนต์ไม่เข้ากับภาพลักษณ์แบรนด์ พร้อมเสนอทางแก้ที่ชัดเจนทุกครั้ง",
-    "A14": "คุณคือผู้เชี่ยวชาญด้านการเขียนพรอมต์สำหรับ AI ของทีม AQUALINE พูดแบบวิศวกรพรอมต์มืออาชีพ "
-           "ชอบแตกโครงสร้างพรอมต์ให้เห็นเป็นส่วน ๆ (Context, Instruction, Format, Constraint) "
-           "แล้วแนะนำวิธีปรับคำสั่งให้ AI ตัวอื่นในทีมทำงานได้แม่นยำขึ้น พร้อมยกตัวอย่างพรอมต์ก่อน-หลังปรับปรุงให้เห็นความต่างชัดเจน",
-    "A15": "คุณคือวิศวกรระบบอัตโนมัติของ AQUALINE พูดแบบคนเชื่อมต่อระบบจริง อ้างถึงเครื่องมือ เช่น Make, Zapier, "
-           "Google Sheets, LINE API, Webhook และ Trigger-Action เสมอ ชอบวาดผังขั้นตอนการทำงานเป็นข้อความ "
-           "เช่น 'เมื่อมีลูกค้าทักแชท → ระบบบันทึกลง Sheet → ส่งแจ้งเตือนทีมขาย' เน้นลดงานซ้ำซ้อนและประหยัดเวลาทีมงาน",
-    "A16": "คุณคือนักออกแบบบูธจัดแสดงสินค้าของ AQUALINE มองงานผ่านพื้นที่จริงสามมิติ พูดถึงผังพื้นที่ "
-           "จุดดึงดูดสายตา (Eye-catching zone) ทางเดินลูกค้า และการจัดวางสินค้าตัวอย่าง เช่น หลังคาโมเดลย่อ "
-           "รางน้ำตัวอย่าง ถังเก็บน้ำขนาดจริง เน้นสร้างประสบการณ์ที่ลูกค้าได้ 'จับต้อง' สินค้าไม่ใช่แค่มองผ่าน",
-    "A17": "คุณคือนักวิจัยตลาดของ AQUALINE เน้นข้อมูลที่อัปเดตและตรวจสอบได้จริงเสมอ ทุกครั้งที่ให้ข้อมูลคู่แข่งหรือแนวโน้มตลาด "
-           "ให้ค้นหาแหล่งอ้างอิงที่เป็นปัจจุบันและแนบลิงก์ URL ประกอบ พูดแบบนักวิเคราะห์ที่ระมัดระวังเรื่องความถูกต้อง "
-           "ไม่คาดเดาโดยไม่มีหลักฐาน และจะบอกตรง ๆ หากไม่พบข้อมูลที่น่าเชื่อถือ",
-    "A18": "คุณคือฝ่ายตรวจสอบสเปกสินค้าของ AQUALINE ละเอียด รอบคอบ และยึดข้อเท็จจริงทางเทคนิคเป็นหลัก "
-           "พูดถึงมาตรฐานวัสดุ ความหนาของแผ่นเหล็ก เกรดสารเคลือบกันสนิม มาตรฐาน มอก. และอายุการใช้งานเสมอ "
-           "หากพบข้อมูลการตลาดที่โอ้อวดเกินจริงหรือไม่ตรงสเปก จะทักท้วงทันทีพร้อมอธิบายเหตุผลทางเทคนิค",
-    "A19": "คุณคือนักขายมือโปรของ AQUALINE พูดจาหนักแน่น มั่นใจ และเข้าใจจิตวิทยาการตัดสินใจซื้อ "
-           "ชอบแต่งสคริปต์ปิดการขายที่จัดการข้อโต้แย้งของลูกค้า (เช่น 'แพงไป', 'ขอคิดดูก่อน') ด้วยเหตุผลและความรู้สึกควบคู่กัน "
-           "เน้นสร้างความเร่งด่วน (Urgency) และความคุ้มค่าที่จับต้องได้ในทุกประโยค",
-    "A20": "คุณคือที่ปรึกษากฎหมายของ AQUALINE พูดอย่างรอบคอบ เป็นทางการ และระมัดระวังถ้อยคำเสมอ "
-           "เน้นตรวจสอบเนื้อหาการตลาดว่าไม่ละเมิดกฎหมายโฆษณา พ.ร.บ.คุ้มครองผู้บริโภค ลิขสิทธิ์ภาพ หรือการกล่าวอ้างสรรพคุณเกินจริง "
-           "หากพบความเสี่ยง จะชี้แจงประเด็นกฎหมายที่เกี่ยวข้องและเสนอถ้อยคำทางเลือกที่ปลอดภัยกว่า",
-    "A21": "คุณคือนักเขียนบทความและบล็อกของ AQUALINE ถนัดเรียบเรียงเนื้อหาเชิงลึกที่ให้ความรู้ควบคู่กับการสร้างความน่าเชื่อถือของแบรนด์ "
-           "พูดด้วยน้ำเสียงผู้เชี่ยวชาญที่เข้าถึงง่าย ชอบวางโครงบทความแบบมีหัวข้อย่อยชัดเจน (เกริ่นนำ → เนื้อหา → สรุปพร้อม CTA) "
-           "เน้นหัวข้อที่คนกำลังค้นหาจริง เช่น วิธีเลือกหลังคา การดูแลรักษารางน้ำ การเลือกขนาดถังเก็บน้ำให้เหมาะกับบ้าน",
-    "A22": "คุณคือผู้เชี่ยวชาญด้านการตั้งราคาของ AQUALINE คิดแบบนักวางกลยุทธ์ราคาที่สมดุลระหว่างกำไรและความสามารถในการแข่งขัน "
-           "พูดถึงโครงสร้างราคาแบบ Tier, Bundle Promotion, ส่วนลดตามฤดูกาล และจิตวิทยาราคา (เช่น 9,990 บาท ดูถูกกว่า 10,000) เสมอ "
-           "ชอบเสนอตัวอย่างแพ็กเกจราคาเปรียบเทียบให้เห็นความคุ้มค่าแต่ละระดับ",
-    "A23": "คุณคือผู้เชี่ยวชาญ LINE Official Account และ CRM ของ AQUALINE พูดถึงการออกแบบ Rich Menu ข้อความ Broadcast "
-           "การแบ่งกลุ่มลูกค้า (Segmentation) และระบบสะสมแต้ม/Loyalty Program เสมอ "
-           "ชอบยกตัวอย่างข้อความ Broadcast ที่กระชับ เป็นกันเอง และมี CTA ชัดเจน เน้นสร้างความสัมพันธ์ระยะยาวกับลูกค้าเก่าให้กลับมาซื้อซ้ำ",
-    "A24": "คุณคือผู้เชี่ยวชาญ TikTok และ Reels ของ AQUALINE เข้าใจจังหวะ เทรนด์ และอัลกอริทึมแพลตฟอร์มวิดีโอสั้นเป็นอย่างดี "
-           "พูดด้วยพลังและความกระชับ ชอบเสนอ Hook ที่หยุดนิ้วคนเลื่อนได้ภายใน 1-2 วินาที พร้อมไอเดียใช้เพลงเทรนด์ ทรานสิชัน "
-           "และมุมกล้องที่ดูเป็นธรรมชาติ ไม่เน้นความสมบูรณ์แบบแต่เน้นความสด ทันกระแส และแชร์ต่อง่าย",
-    "A25": "คุณคือนักจิตวิทยาการตลาดของ AQUALINE วิเคราะห์ทุกอย่างผ่านมุมมองพฤติกรรมและอคติทางความคิด (Cognitive Bias) ของผู้บริโภค "
-           "พูดถึง Social Proof, Scarcity, Anchoring, Loss Aversion และ Trigger ทางอารมณ์ที่ทำให้คนตัดสินใจซื้อ "
-           "ชอบอธิบายว่า 'ทำไมลูกค้าถึงคิดแบบนี้' ก่อนเสนอว่าควรออกแบบข้อความหรือภาพอย่างไรให้ตรงจุดที่ลูกค้าตัดสินใจ",
-}
 
 def get_agent_role_desc(aid: str) -> str:
     """ลำดับความสำคัญ: Custom Persona ของผู้ใช้ > Default Persona เชิงลึก > 'p' สั้น ๆ (fallback)"""
@@ -1177,8 +1072,7 @@ with st.sidebar:
     .px-agent-card.selected .px-agent-name { color: #93c5fd; }
     .px-new-badge { position: absolute; top: -4px; right: -4px; background: #7c3aed; color: white; font-size: 7px; padding: 1px 4px; border-radius: 4px; font-weight: bold; }
     .px-section-label { font-size: 11px; color: #64748b; margin: 8px 0 4px; letter-spacing: 0.5px; }
-    .px-agent-card svg { width: 100% !important; height: auto !important; max-height: 90px; }
-    .px-agent-card img { width: 100% !important; height: auto !important; max-height: 90px; }
+    .px-agent-icon { font-size: 28px; line-height: 1; margin: 4px 0 2px; }
     </style>
                 
     """, unsafe_allow_html=True)
@@ -1186,27 +1080,27 @@ with st.sidebar:
     # กลุ่มหลัก — pixel art grid
     st.markdown('<div class="px-section-label">── กลุ่มหลัก ──</div>', unsafe_allow_html=True)
     main_agents = ["A1","A2","A3","A4","A5","A6","A7","A8","A9","A10","A11","A12","A13","A14","A15","A16","A17","A18","A19","A20","A21"]
-    new_agents  = ["A22","A23","A24","A25"]
+    new_agents  = ["A22","A23","A24","A25","A26"]
 
     cols_main = st.columns(3)
     for idx, aid in enumerate(main_agents):
         info = team_data[aid]
-        svg  = info.get('pixel_art', '')
+        icon = info.get('icon', '🤖')
         with cols_main[idx % 3]:
             is_checked = st.session_state.get(aid, False)
             sel_cls = "selected" if is_checked else ""
-            st.markdown(f"""<div class="px-agent-card {sel_cls}">{svg}<div class="px-agent-name">{info['name']}</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="px-agent-card {sel_cls}"><div class="px-agent-icon">{icon}</div><div class="px-agent-name">{info['name']}</div></div>""", unsafe_allow_html=True)
             st.checkbox("", key=aid, label_visibility="collapsed")
 
     st.markdown('<div class="px-section-label">── ✨ ใหม่ใน V8.0 ──</div>', unsafe_allow_html=True)
     cols_new = st.columns(3)
     for idx, aid in enumerate(new_agents):
         info = team_data[aid]
-        svg  = info.get('pixel_art', '')
+        icon = info.get('icon', '🤖')
         with cols_new[idx % 3]:
             is_checked = st.session_state.get(aid, False)
             sel_cls = "selected" if is_checked else ""
-            st.markdown(f"""<div class="px-agent-card new-agent {sel_cls}"><span class="px-new-badge">NEW</span>{svg}<div class="px-agent-name">{info['name']}</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="px-agent-card new-agent {sel_cls}"><span class="px-new-badge">NEW</span><div class="px-agent-icon">{icon}</div><div class="px-agent-name">{info['name']}</div></div>""", unsafe_allow_html=True)
             st.checkbox("", key=aid, label_visibility="collapsed")
 
     selected_agents = [aid for aid in team_data.keys() if st.session_state.get(aid, False)]
@@ -1251,72 +1145,37 @@ with st.sidebar:
             st.caption("เลือก Agent ก่อนเพื่อตั้งค่า Persona")
 
 # ==========================================
-# 🏛️ MEETING ROOM — วางก่อน Layout Columns (Full Width บนสุด)
+# 🌐 KNOWLEDGE GRAPH — แทนที่ Meeting Room เดิม (Full Width บนสุด)
 # ==========================================
-def _get_meeting_bg_b64() -> str:
-    for p in [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "Meeting_room_bg.jpg"),
-        os.path.join("assets", "Meeting_room_bg.jpg"),
-    ]:
-        if os.path.exists(p):
-            with open(p, "rb") as f:
-                return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
-    return ""
+from kg_widget import render_full_graph, FULL_EXTRA_PX
+from ui_settings import get_kg_theme
+import streamlit.components.v1 as _mr_components
 
-def _get_agent_img_b64(aid: str) -> str:
-    for folder in [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents"),
-        "agents",
-    ]:
-        p = os.path.join(folder, f"{aid}.png")
-        if os.path.exists(p):
-            with open(p, "rb") as f:
-                return "data:image/png;base64," + base64.b64encode(f.read()).decode()
-    return ""
+_kg_a26_phase = st.session_state.get("a26_research_status", "idle")
+_kg_a26_ts    = st.session_state.get("a26_research_ts", "")
+if _kg_a26_phase == "running":
+    _kg_a26_status_text = "🌐 A26 กำลังเจาะข้อมูลคู่แข่ง..."
+elif _kg_a26_phase == "done":
+    _kg_a26_status_text = f"✅ A26 อัปเดตล่าสุด {_kg_a26_ts}"
+elif _kg_a26_phase == "error":
+    _kg_a26_status_text = "⚠️ A26 ค้นหาไม่สำเร็จ"
+else:
+    _kg_a26_status_text = "⏳ A26 รอกดปุ่มเริ่มค้นหา (หน้า งานบริษัทอาควาไลน์)"
 
-# ── Animated sprite frames (derived walk-cycle, claw-empire-style naming) ──
-# agents/sprites/{aid}-D-1/2/3.png  = walking/idle bob cycle (3 frames)
-# agents/sprites/{aid}-L-1.png      = facing-left lean
-# agents/sprites/{aid}-R-1.png      = facing-right lean
-def _get_agent_sprite_b64(aid: str, suffix: str) -> str:
-    for folder in [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents", "sprites"),
-        os.path.join("agents", "sprites"),
-    ]:
-        p = os.path.join(folder, f"{aid}-{suffix}.png")
-        if os.path.exists(p):
-            with open(p, "rb") as f:
-                return "data:image/png;base64," + base64.b64encode(f.read()).decode()
-    return ""
+_kg_height = 560
+_kg_html = render_full_graph(
+    height=_kg_height,
+    a26_phase=_kg_a26_phase,
+    a26_status=_kg_a26_status_text,
+    title="AQUALINE AI TEAM NETWORK",
+    theme=get_kg_theme(),
+)
+_mr_components.html(_kg_html, height=_kg_height + FULL_EXTRA_PX, scrolling=False)
 
-@st.cache_data(show_spinner=False)
-def _get_agent_sprite_set(aid: str):
-    """Return {'walk':[f1,f2,f3] or None, 'left':uri or None, 'right':uri or None}."""
-    walk = [_get_agent_sprite_b64(aid, s) for s in ("D-1", "D-2", "D-3")]
-    walk = walk if all(walk) else None
-    left  = _get_agent_sprite_b64(aid, "L-1") or None
-    right = _get_agent_sprite_b64(aid, "R-1") or None
-    return {"walk": walk, "left": left, "right": right}
+st.markdown("<hr style='border-color:#1e293b;margin:4px 0 12px;'>", unsafe_allow_html=True)
 
-_mr_agents_parts = []
-for _aid, _info in team_data.items():
-    _img = _get_agent_img_b64(_aid)
-    _sprites = _get_agent_sprite_set(_aid)
-    if _sprites["walk"]:
-        _walk_json = "[" + ",".join(f'"{f}"' for f in _sprites["walk"]) + "]"
-    else:
-        _walk_json = "null"
-    _left_json  = f'"{_sprites["left"]}"'  if _sprites["left"]  else "null"
-    _right_json = f'"{_sprites["right"]}"' if _sprites["right"] else "null"
-    _mr_agents_parts.append(
-        f'{{"id":"{_aid}","name":"{_info["name"]}","role":"{_info.get("p","").replace(chr(34),chr(39))}",'
-        f'"img":"{_img}","icon":"{_info["icon"]}",'
-        f'"sprites":{{"walk":{_walk_json},"left":{_left_json},"right":{_right_json}}}}}'
-    )
-_mr_agents_json = "[" + ",".join(_mr_agents_parts) + "]"
-_mr_bg_b64      = _get_meeting_bg_b64()
-
-_MEETING_ROOM_HTML = f"""<!DOCTYPE html>
+if False:
+    _MEETING_ROOM_HTML_DISABLED = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -1806,74 +1665,6 @@ function loop() {{
 </script>
 </body>
 </html>"""
-
-# ════════════════════════════════════════════════
-#  Streamlit: hidden text_input เพื่อรับค่าจาก JS
-#  และ inject sessionStorage ให้ iframe
-# ════════════════════════════════════════════════
-import streamlit.components.v1 as _mr_components
-
-# ── CSS: บังคับ iframe เต็มจอกว้าง (ออกนอก column padding + sidebar) ──
-st.markdown("""
-<style>
-/* ── Full-bleed Meeting Room iframe ── */
-div[data-testid="stHtml"] > iframe,
-iframe[title="streamlit_components.v1.html.html"],
-section.main > div.block-container iframe:first-of-type {
-    position: relative !important;
-    left: 50% !important;
-    right: 50% !important;
-    margin-left: -50vw !important;
-    margin-right: -50vw !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    display: block !important;
-}
-/* กัน padding ของ block-container ไม่ให้บีบ iframe */
-section.main > div.block-container {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    max-width: 100% !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ── Render Meeting Room ──
-# Streamlit components.html ไม่รับ postMessage เสมอ
-# วิธีที่แน่นอนที่สุดคือตั้ง height สูงพอสำหรับทุก viewport
-# ภาพ aspect ratio = 984/1598 ≈ 0.616
-# viewport กว้างสุด ~1920px → height = 1920*0.616+44 ≈ 1228
-# ใช้ height=1100 เป็น safe value สำหรับ 1400-1600px viewport
-_mr_components.html(_MEETING_ROOM_HTML, height=1100, scrolling=False)
-
-# ── inject sessionStorage จาก Streamlit ──
-#  ใช้ st.markdown + JS วัดความยาวของ brief textarea
-#  แล้วเขียนลง sessionStorage ที่ iframe จะ poll
-st.markdown("""
-<script>
-(function injectMRBrief() {
-  function run() {
-    // หา textarea ที่น่าจะเป็นช่องบรีฟ (textarea ที่ยาวที่สุดหรือมี content)
-    const tas = document.querySelectorAll('textarea');
-    let maxLen = 0;
-    tas.forEach(ta => { if(ta.value.length > maxLen) maxLen = ta.value.length; });
-
-    // เขียนลง sessionStorage — iframe อ่านได้เพราะ same origin (localhost)
-    try {
-      sessionStorage.setItem('mr_brief_len', String(maxLen));
-    } catch(e) {}
-  }
-
-  // Run ทุก 600ms
-  setInterval(run, 600);
-
-  // ยังฟัง input events ด้วยเผื่อ fast typing
-  document.addEventListener('input', run, true);
-})();
-</script>
-""", unsafe_allow_html=True)
-
-st.markdown("<hr style='border-color:#1e293b;margin:4px 0 12px;'>", unsafe_allow_html=True)
 
 # ==========================================
 # 🏠 LAYOUT

@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-🎭 DEFAULT AGENT PERSONAS — ใช้ร่วมกันทั้ง ai_team.py และหน้า "ทีมงานทั้งหมด"
+🎭 DEFAULT AGENT PERSONAS — ใช้ร่วมกันทั้ง ai_team.py และหน้า "งานบริษัทอาควาไลน์"
 
-ให้แต่ละ Agent (A1-A25) มีตัวตน น้ำเสียง และขอบเขตความเชี่ยวชาญของตัวเองชัดเจน
+ให้แต่ละ Agent (A1-A26) มีตัวตน น้ำเสียง และขอบเขตความเชี่ยวชาญของตัวเองชัดเจน
 แทนที่จะตอบคล้ายกันหมดทั้ง ๆ ที่ตั้งค่าให้แต่ละตัวมีความชำนาญคนละด้าน
 
 ลำดับความสำคัญที่ระบบควรใช้เมื่อสร้าง system prompt ให้ agent แต่ละตัว:
   1) Custom Persona ที่ผู้ใช้กำหนดเอง (เก็บใน agent_personas.json / session_state.custom_personas)
   2) Default Persona เชิงลึกในไฟล์นี้ (AGENT_DEFAULT_PERSONAS)
   3) คำอธิบายสั้น ๆ ('p') ใน team_data/AGENTS เป็น fallback สุดท้าย
+
+AGENT_META คือ "แหล่งความจริงเดียว" (single source of truth) ของข้อมูล agent ทุกตัว
+(name / icon / p / color / parallel) — ไฟล์อื่นทั้งหมด (ai_team.py และ pages/*.py)
+ควรดึงค่าจาก AGENT_META แทนการ hardcode dict ของตัวเองซ้ำ ๆ เพื่อให้การเพิ่ม/แก้ไข agent
+ทำที่เดียวแล้วมีผลทุกหน้าโดยอัตโนมัติ
 """
 
 AGENT_DEFAULT_PERSONAS = {
@@ -91,7 +96,103 @@ AGENT_DEFAULT_PERSONAS = {
     "A25": "คุณคือนักจิตวิทยาการตลาดของ AQUALINE วิเคราะห์ทุกอย่างผ่านมุมมองพฤติกรรมและอคติทางความคิด (Cognitive Bias) ของผู้บริโภค "
            "พูดถึง Social Proof, Scarcity, Anchoring, Loss Aversion และ Trigger ทางอารมณ์ที่ทำให้คนตัดสินใจซื้อ "
            "ชอบอธิบายว่า 'ทำไมลูกค้าถึงคิดแบบนี้' ก่อนเสนอว่าควรออกแบบข้อความหรือภาพอย่างไรให้ตรงจุดที่ลูกค้าตัดสินใจ",
+    "A26": "คุณคือหัวหน้าฝ่ายเจาะข้อมูลคู่แข่งของ AQUALINE ทำงานในรูปแบบทีมข่าวกรองธุรกิจ (Competitive Intelligence Cell) ไม่ใช่นักวิจัยคนเดียว "
+           "เน้นค้นหาและประมวลข้อมูลคู่แข่งแบบ Real-time จากหลายมุมพร้อมกัน เช่น ราคา โปรโมชัน สเปกสินค้า ช่องทางการขาย แคมเปญโฆษณา และรีวิวลูกค้า "
+           "ทุกครั้งที่รายงาน ต้องสรุปเป็นโครงสร้างชัดเจนว่าใครคือคู่แข่งหลัก จุดแข็ง-จุดอ่อนของแต่ละราย และช่องว่างในตลาดที่ AQUALINE ใช้แข่งได้ "
+           "พร้อมแนบแหล่งอ้างอิง/ลิงก์ของข้อมูลทุกชิ้นเพื่อให้ตรวจสอบย้อนกลับได้ ไม่ฟันธงโดยไม่มีหลักฐาน และจะระบุชัดเจนหากข้อมูลบางส่วนยังหาไม่ครบ",
 }
+
+
+# ==========================================
+# 🏢 DEPARTMENTS — โครงสร้างแผนกของทีม AI (ยืนยันร่วมกับผู้ใช้แล้ว)
+# จัดกลุ่ม 26 agent เป็น 6 แผนกตามงานจริงของบริษัท AQUALINE
+# ใช้เป็น Single Source of Truth สำหรับการจัดกลุ่มคำตอบใน "ห้องประชุม"
+# และการกระจายงานของ "เลขา" — ห้ามแก้ field "dept" ใน AGENT_META ตรง ๆ
+# ให้แก้ที่นี่ที่เดียว (รายชื่อ agent ในแต่ละแผนก) แล้วระบบจะ sync ให้อัตโนมัติ
+# ==========================================
+DEPARTMENTS = {
+    "D1": {
+        "name": "ฝ่ายกลยุทธ์และผู้บริหารทีม",
+        "icon": "🧭", "color": "#38bdf8",
+        "desc": "ตั้งกรอบทิศทาง ตัดสินไอเดีย คุมเวลา/เดดไลน์ของทั้งทีม เปิด-ปิดทุกการประชุม",
+        "agents": ["A1", "A2", "A11", "A25"],
+    },
+    "D2": {
+        "name": "ฝ่ายครีเอทีฟและงานผลิตสื่อ",
+        "icon": "🎨", "color": "#f472b6",
+        "desc": "งานภาพ กราฟิก งานเรนเดอร์ 3D วิดีโอ สตอรี่บอร์ด บูธจัดแสดง และคลิปสั้น (TikTok/Reels)",
+        "agents": ["A3", "A4", "A5", "A6", "A12", "A13", "A16", "A24"],
+    },
+    "D3": {
+        "name": "ฝ่ายดิจิทัลและเว็บไซต์",
+        "icon": "🌐", "color": "#34d399",
+        "desc": "เว็บไซต์ Wix คอนเทนต์/บล็อก SEO-AEO LINE OA/CRM และการดูแลลูกค้า",
+        "agents": ["A8", "A21", "A23", "A9"],
+    },
+    "D4": {
+        "name": "ฝ่ายมีเดียและงบโฆษณา",
+        "icon": "📈", "color": "#fbbf24",
+        "desc": "ซื้อโฆษณา งบประมาณ/กลุ่มเป้าหมาย/วัตถุประสงค์แคมเปญ การตั้งราคา และการปิดการขาย",
+        "agents": ["A7", "A10", "A22", "A19"],
+    },
+    "D5": {
+        "name": "ฝ่ายข่าวกรองตลาดและคู่แข่ง",
+        "icon": "🕵️", "color": "#22d3ee",
+        "desc": "วิจัยคู่แข่งและวิเคราะห์ตลาดแบบ Real-time พร้อมแหล่งอ้างอิง",
+        "agents": ["A17", "A26"],
+    },
+    "D6": {
+        "name": "ฝ่ายกำกับมาตรฐานและเทคนิค",
+        "icon": "⚖️", "color": "#f87171",
+        "desc": "ตรวจสเปกสินค้า ตรวจกฎหมาย/ลิขสิทธิ์ ปรับจูน AI Prompt และระบบอัตโนมัติ",
+        "agents": ["A18", "A20", "A14", "A15"],
+    },
+}
+
+
+# ==========================================
+# 🗂️ AGENT_META — Single Source of Truth (A1-A26)
+# name / icon / p (short desc) / color / parallel / dept (เติมอัตโนมัติจาก DEPARTMENTS ด้านบน)
+# ทุกไฟล์ที่ต้องใช้ข้อมูล agent (ai_team.py, pages/*.py) ควร derive จาก dict นี้
+# แทนการ hardcode ซ้ำ เพื่อให้เพิ่ม/แก้ agent ได้จากที่เดียว
+# ==========================================
+AGENT_META = {
+    "A1":  {"name": "นักกลยุทธ์การตลาด",        "icon": "👨‍💼", "p": "วางแผนภาพรวมและจุดขาย",                                  "color": "#38bdf8", "parallel": False},
+    "A2":  {"name": "ผู้จัดการโครงการ",           "icon": "📋",   "p": "คุมเป้าหมายและเวลา",                                      "color": "#a78bfa", "parallel": False},
+    "A3":  {"name": "นักเขียนคำโฆษณา",            "icon": "✍️",   "p": "สร้าง Content และ Caption โซเชียล",                       "color": "#34d399", "parallel": True},
+    "A4":  {"name": "กราฟิกดีไซเนอร์",            "icon": "🎨",   "p": "ออกแบบ Visual",                                           "color": "#f472b6", "parallel": True},
+    "A5":  {"name": "3D Visualizer",                "icon": "🏗️",   "p": "เรนเดอร์ภาพสินค้าจริง",                                  "color": "#fb923c", "parallel": True},
+    "A6":  {"name": "ผู้เชี่ยวชาญวิดีโอ",         "icon": "🎬",   "p": "สคริปต์และมุมกล้อง",                                      "color": "#e879f9", "parallel": True},
+    "A7":  {"name": "นักยิงแอด Facebook",          "icon": "📈",   "p": "วางแผนสื่อโฆษณา",                                         "color": "#38bdf8", "parallel": False},
+    "A8":  {"name": "ผู้เชี่ยวชาญ SEO",            "icon": "🌐",   "p": "ปรับแต่งเนื้อหาให้ติดอันดับ",                             "color": "#34d399", "parallel": True},
+    "A9":  {"name": "ฝ่ายบริการลูกค้า",            "icon": "💬",   "p": "วางแนวทางตอบคำถาม",                                       "color": "#fbbf24", "parallel": True},
+    "A10": {"name": "นักวิเคราะห์ข้อมูล",          "icon": "📊",   "p": "วิเคราะห์สถิติความคุ้มค่า",                               "color": "#a78bfa", "parallel": True},
+    "A11": {"name": "ครีเอทีฟไดเรกเตอร์",          "icon": "💡",   "p": "คิดไอเดีย Big Idea",                                      "color": "#f59e0b", "parallel": False},
+    "A12": {"name": "คนเขียนสตอรี่บอร์ด",          "icon": "🎞️",   "p": "วางลำดับภาพเล่าเรื่อง",                                  "color": "#34d399", "parallel": True},
+    "A13": {"name": "อาร์ตไดเรกเตอร์",             "icon": "✨",   "p": "ควบคุมคุณภาพงานดีไซน์",                                  "color": "#f472b6", "parallel": True},
+    "A14": {"name": "ผู้เชี่ยวชาญ AI Prompt",      "icon": "🤖",   "p": "ปรับจูนคำสั่งให้ AI",                                     "color": "#38bdf8", "parallel": True},
+    "A15": {"name": "นักวางระบบอัตโนมัติ",         "icon": "⚙️",   "p": "เชื่อมระบบ Automation",                                   "color": "#94a3b8", "parallel": True},
+    "A16": {"name": "นักออกแบบบูธ",                "icon": "🎪",   "p": "วางผังงานนิทรรศการ",                                      "color": "#fb923c", "parallel": True},
+    "A17": {"name": "นักวิจัยตลาด",                "icon": "🔍",   "p": "เจาะลึกข้อมูลคู่แข่งแบบ Real-time พร้อมอ้างอิง URL",     "color": "#38bdf8", "parallel": False},
+    "A18": {"name": "ฝ่ายตรวจสเปกสินค้า",          "icon": "✅",   "p": "ตรวจสอบความถูกต้องทางเทคนิค",                            "color": "#34d399", "parallel": True},
+    "A19": {"name": "นักขายมือโปร",                "icon": "💰",   "p": "สร้างสคริปต์ปิดการขาย",                                  "color": "#fbbf24", "parallel": True},
+    "A20": {"name": "ที่ปรึกษากฎหมาย",             "icon": "⚖️",   "p": "ตรวจสอบข้อบังคับและลิขสิทธิ์",                          "color": "#f87171", "parallel": False},
+    "A21": {"name": "นักเขียนบทความและบล็อก",      "icon": "📝",   "p": "เขียนบทความยาว เนื้อหาเชิงลึก และบล็อกสำหรับเว็บไซต์",  "color": "#a78bfa", "parallel": True},
+    "A22": {"name": "นักวางราคา/Pricing",           "icon": "🧮",   "p": "วิเคราะห์ราคา ตั้ง Promo Bundle และโครงสร้าง Tier ราคา", "color": "#34d399", "parallel": True},
+    "A23": {"name": "ผู้เชี่ยวชาญ LINE OA/CRM",    "icon": "📱",   "p": "วางแผน LINE OA, Broadcast, CRM และ Loyalty Program",     "color": "#38bdf8", "parallel": True},
+    "A24": {"name": "TikTok & Reels Specialist",     "icon": "🎵",   "p": "สร้าง Hook, Trend, Script สำหรับ TikTok และ Reels โดยเฉพาะ", "color": "#f472b6", "parallel": True},
+    "A25": {"name": "นักจิตวิทยาการตลาด",          "icon": "🧠",   "p": "วิเคราะห์ Psychology ลูกค้า trigger การซื้อ และ Bias ต่างๆ", "color": "#a78bfa", "parallel": False},
+    "A26": {"name": "ฝ่ายเจาะข้อมูลคู่แข่ง",       "icon": "🕵️",   "p": "ทีมเจาะข้อมูลคู่แข่งแบบ Real-time ราคา/โปรโมชัน/แคมเปญ", "color": "#22d3ee", "parallel": False},
+}
+
+# เติม field "dept" ให้ agent ทุกตัวใน AGENT_META โดยอัตโนมัติจาก DEPARTMENTS ด้านบน
+# (กันพิมพ์ผิด/ไม่ตรงกันระหว่างสองที่ — แก้สมาชิกแผนกที่ DEPARTMENTS ที่เดียวพอ)
+for _did, _dept in DEPARTMENTS.items():
+    for _aid in _dept["agents"]:
+        if _aid in AGENT_META:
+            AGENT_META[_aid]["dept"] = _did
+
+AGENT_IDS = list(AGENT_META.keys())
 
 
 def get_agent_role_desc(aid, custom_personas=None, fallback_p=""):
@@ -103,3 +204,23 @@ def get_agent_role_desc(aid, custom_personas=None, fallback_p=""):
     if aid in AGENT_DEFAULT_PERSONAS:
         return AGENT_DEFAULT_PERSONAS[aid]
     return fallback_p
+
+
+def get_department_id(aid: str) -> str:
+    """คืนรหัสแผนก (เช่น 'D2') ของ agent ตัวนี้ — คืนค่าว่างถ้าไม่พบ"""
+    return AGENT_META.get(aid, {}).get("dept", "")
+
+
+def get_department_info(aid: str) -> dict:
+    """คืนข้อมูลแผนกแบบเต็ม (name/icon/color/desc/agents) ของ agent ตัวนี้"""
+    return DEPARTMENTS.get(get_department_id(aid), {})
+
+
+def get_agents_by_department(did: str) -> list:
+    """คืนรายชื่อ agent id ทั้งหมดในแผนกนี้ (เช่น 'D2' -> ['A3','A4',...])"""
+    return list(DEPARTMENTS.get(did, {}).get("agents", []))
+
+
+def get_department_ids() -> list:
+    """คืนรายชื่อรหัสแผนกทั้งหมดตามลำดับที่นิยามไว้ (D1-D6)"""
+    return list(DEPARTMENTS.keys())

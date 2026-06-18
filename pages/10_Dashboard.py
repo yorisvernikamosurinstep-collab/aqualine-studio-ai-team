@@ -5,11 +5,21 @@ import json
 import os
 from datetime import datetime, timedelta
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_settings import inject_global_font_css
+
 st.set_page_config(
     page_title="Dashboard — AQUALINE AI TEAM",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
+st.session_state["_active_page"] = __file__
+
+# ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
+st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
 # API KEY
@@ -19,6 +29,9 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     st.error("🔑 ไม่พบ GOOGLE_API_KEY ใน secrets.toml")
     st.stop()
+
+# อัตราแลกเปลี่ยน USD→THB — ดึงจาก secrets.toml เดียวกับ ai_team.py (single source of truth)
+USD_TO_THB = float(st.secrets.get("USD_TO_THB", "35.0"))
 
 # ══════════════════════════════════════════════════════════════════
 # CSS
@@ -76,40 +89,52 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
-# AGENTS (shared)
+# AGENTS (shared) — ดึงจาก AGENT_META (agent_default_personas.py)
+# single source of truth: เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว หน้านี้เห็นผลตามอัตโนมัติ (รวม A26)
 # ══════════════════════════════════════════════════════════════════
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from agent_default_personas import AGENT_META
+
 AGENTS = {
-    "A1":  {"name":"นักกลยุทธ์การตลาด",      "icon":"👨‍💼","color":"#38bdf8"},
-    "A2":  {"name":"ผู้จัดการโครงการ",         "icon":"📋", "color":"#a78bfa"},
-    "A3":  {"name":"นักเขียนคำโฆษณา",          "icon":"✍️", "color":"#34d399"},
-    "A4":  {"name":"กราฟิกดีไซเนอร์",          "icon":"🎨", "color":"#f472b6"},
-    "A5":  {"name":"3D Visualizer",              "icon":"🏗️", "color":"#fb923c"},
-    "A6":  {"name":"ผู้เชี่ยวชาญวิดีโอ",        "icon":"🎬", "color":"#e879f9"},
-    "A7":  {"name":"นักยิงแอด Facebook",         "icon":"📈", "color":"#38bdf8"},
-    "A8":  {"name":"ผู้เชี่ยวชาญ SEO",           "icon":"🌐", "color":"#34d399"},
-    "A9":  {"name":"ฝ่ายบริการลูกค้า",          "icon":"💬", "color":"#fbbf24"},
-    "A10": {"name":"นักวิเคราะห์ข้อมูล",        "icon":"📊", "color":"#a78bfa"},
-    "A11": {"name":"ครีเอทีฟไดเรกเตอร์",        "icon":"💡", "color":"#f59e0b"},
-    "A12": {"name":"คนเขียนสตอรี่บอร์ด",        "icon":"🎞️", "color":"#34d399"},
-    "A13": {"name":"อาร์ตไดเรกเตอร์",           "icon":"✨", "color":"#f472b6"},
-    "A14": {"name":"ผู้เชี่ยวชาญ AI Prompt",    "icon":"🤖", "color":"#38bdf8"},
-    "A15": {"name":"นักวางระบบอัตโนมัติ",       "icon":"⚙️", "color":"#94a3b8"},
-    "A16": {"name":"นักออกแบบบูธ",              "icon":"🎪", "color":"#fb923c"},
-    "A17": {"name":"นักวิจัยตลาด",              "icon":"🔍", "color":"#38bdf8"},
-    "A18": {"name":"ฝ่ายตรวจสเปกสินค้า",        "icon":"✅", "color":"#34d399"},
-    "A19": {"name":"นักขายมือโปร",              "icon":"💰", "color":"#fbbf24"},
-    "A20": {"name":"ที่ปรึกษากฎหมาย",           "icon":"⚖️", "color":"#f87171"},
-    "A21": {"name":"นักเขียนบทความและบล็อก",    "icon":"📝", "color":"#a78bfa"},
-    "A22": {"name":"นักวางราคา / Pricing",       "icon":"🧮", "color":"#34d399"},
-    "A23": {"name":"ผู้เชี่ยวชาญ LINE OA/CRM",  "icon":"📱", "color":"#38bdf8"},
-    "A24": {"name":"TikTok & Reels Specialist",   "icon":"🎵", "color":"#f472b6"},
-    "A25": {"name":"นักจิตวิทยาการตลาด",        "icon":"🧠", "color":"#a78bfa"},
+    aid: {"name": m["name"], "icon": m["icon"], "color": m["color"]}
+    for aid, m in AGENT_META.items()
 }
+
+# ══════════════════════════════════════════════════════════════════
+# PERSISTENCE — dashboard_data.json (projects/costs ต้องอยู่ข้าม session ไม่หายตอนปิดเบราว์เซอร์)
+# ══════════════════════════════════════════════════════════════════
+DASH_DATA_FILE = "dashboard_data.json"
+
+def load_dash_data() -> dict:
+    if os.path.exists(DASH_DATA_FILE):
+        try:
+            with open(DASH_DATA_FILE, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            return {"projects": d.get("projects", []), "costs": d.get("costs", {})}
+        except Exception:
+            pass
+    return {"projects": [], "costs": {}}
+
+def save_dash_data():
+    try:
+        with open(DASH_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "projects": st.session_state.dash_projects,
+                "costs": st.session_state.dash_costs,
+            }, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 # ══════════════════════════════════════════════════════════════════
 # SESSION STATE
 # ══════════════════════════════════════════════════════════════════
 if "dash_sessions"   not in st.session_state: st.session_state.dash_sessions   = []
+if "dash_data_loaded" not in st.session_state:
+    _persisted = load_dash_data()
+    st.session_state.dash_costs    = _persisted["costs"]
+    st.session_state.dash_projects = _persisted["projects"]
+    st.session_state.dash_data_loaded = True
 if "dash_costs"      not in st.session_state: st.session_state.dash_costs      = {}
 if "dash_projects"   not in st.session_state: st.session_state.dash_projects   = []
 if "dash_activities" not in st.session_state: st.session_state.dash_activities = []
@@ -134,14 +159,23 @@ with st.sidebar:
       <div style='font-size:10px;color:#334155;font-family:IBM Plex Mono,monospace'>AI LIVE CHAT</div>
     </div>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.page_link("ai_team.py",                        label="🤖 AI Special Team")
-    st.page_link("pages/8_Workflow_Builder.py",        label="🏭 Content Factory")
-    st.page_link("pages/9_Live_Chat.py",               label="💬 Live Chat")
-    st.page_link("pages/10_Dashboard.py",              label="📊 Dashboard")
-    st.page_link("pages/11_Budget_Cost_Manager.py",    label="💰 Budget & Cost")
-    st.page_link("pages/12_Report_Generator.py",       label="📄 Report Generator")
-    st.page_link("pages/13_Agent_Persona_Editor.py",   label="🧬 Agent Persona Editor")
-    st.page_link("pages/14_Settings_Config.py",        label="⚙️ Settings & Config")
+    st.page_link("ai_team.py",                          label="🤖 AI Special Team")
+    st.page_link("pages/1_งานบริษัทอาควาไลน์.py",        label="🏢 งานบริษัทอาควาไลน์")
+    st.page_link("pages/2_คุยกับ_AI_Agent.py",           label="💬 คุยกับ AI Agent")
+    st.page_link("pages/3_Live_Chat.py",                label="💬 Live Chat")
+    st.page_link("pages/4_สร้าง_Brief_ด่วน.py",          label="📝 สร้าง Brief ด่วน")
+    st.page_link("pages/5_Workflow_Builder.py",         label="🏭 Content Factory")
+    st.page_link("pages/6_ประวัติการประชุม.py",          label="🕐 ประวัติการประชุม")
+    st.page_link("pages/7_สถิติการใช้งาน.py",            label="📈 สถิติการใช้งาน")
+    st.page_link("pages/8_แฟ้มงาน.py",                   label="📁 แฟ้มงาน")
+    st.page_link("pages/9_คลัง_Prompt.py",               label="📚 คลัง Prompt")
+    st.page_link("pages/10_Dashboard.py",               label="📊 Dashboard")
+    st.page_link("pages/11_Budget_Cost_Manager.py",     label="💰 Budget & Cost")
+    st.page_link("pages/12_Report_Generator.py",        label="📄 Report Generator")
+    st.page_link("pages/13_Agent_Persona_Editor.py",    label="🧬 Agent Persona Editor")
+    st.page_link("pages/14_Settings_Config.py",         label="⚙️ Settings & Config")
+    st.page_link("pages/15_KONEX.py",                   label="🧠 KONEX")
+    st.page_link("pages/16_Design_UX_UI.py",            label="🎨 Design UX/UI")
     st.markdown("---")
     if st.button("🔄 รีเฟรช Dashboard", use_container_width=True):
         st.rerun()
@@ -181,7 +215,7 @@ _sessions  = _analytics.get("sessions", [])
 real_total_sessions  = len(_sessions)
 real_total_tokens    = sum(s.get("tokens",   0)   for s in _sessions)
 real_total_cost_usd  = sum(s.get("cost_usd", 0.0) for s in _sessions)
-real_total_cost_thb  = real_total_cost_usd * 35
+real_total_cost_thb  = real_total_cost_usd * USD_TO_THB
 real_agent_calls     = sum(len(s.get("agents_used", [])) for s in _sessions)
 real_top_agents      = sorted(_analytics.get("agent_usage", {}).items(), key=lambda x: x[1], reverse=True)
 
@@ -311,6 +345,7 @@ with col_proj:
                     "name": p_name, "desc": p_desc, "progress": p_prog,
                     "date": datetime.now().strftime("%d/%m/%Y"), "status": "active"
                 })
+                save_dash_data()
                 st.success(f"✅ เพิ่ม '{p_name}' แล้ว")
                 st.rerun()
 
@@ -334,6 +369,7 @@ with col_proj:
             with col_del:
                 if st.button("🗑️", key=f"del_proj_{i}", help="ลบโปรเจกต์"):
                     st.session_state.dash_projects.pop(i)
+                    save_dash_data()
                     st.rerun()
     else:
         st.markdown("""
@@ -355,6 +391,7 @@ with col_cost:
         cost_amt   = st.number_input("จำนวนเงิน (฿)", min_value=0.0, step=10.0, key="cost_amt_inp")
         if st.button("บันทึก", key="save_cost"):
             st.session_state.dash_costs[cost_model] = st.session_state.dash_costs.get(cost_model, 0.0) + cost_amt
+            save_dash_data()
             st.rerun()
 
     total = sum(model_costs.values())
@@ -374,6 +411,7 @@ with col_cost:
 
     if total > 0 and st.button("🗑️ รีเซ็ตค่าใช้จ่าย", key="reset_cost"):
         st.session_state.dash_costs = {}
+        save_dash_data()
         st.rerun()
 
 # ══════════════════════════════════════════════════════════════════
@@ -474,7 +512,7 @@ with col_ex1:
         w.writerow(["timestamp","project","tokens","cost_usd","cost_thb","agents"])
         for s in filtered_s:
             w.writerow([s.get("timestamp",""), s.get("project",""), s.get("tokens",0),
-                        round(s.get("cost_usd",0),6), round(s.get("cost_usd",0)*35,2),
+                        round(s.get("cost_usd",0),6), round(s.get("cost_usd",0)*USD_TO_THB,2),
                         "|".join(s.get("agents_used",[]))])
         st.download_button("📥 Export CSV", data=buf.getvalue().encode("utf-8-sig"),
             file_name=f"dashboard_{datetime.now().strftime('%Y%m%d')}.csv",
@@ -494,7 +532,7 @@ with col_ex3:
     total_tok = sum(s.get("tokens",0) for s in filtered_s)
     total_cost_exp = sum(s.get("cost_usd",0) for s in filtered_s)
     md_lines = [f"# AQUALINE Dashboard Report\nExported: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n",
-                f"**Sessions:** {len(filtered_s)} | **Tokens:** {total_tok:,} | **Cost:** ${total_cost_exp:.4f} / ฿{total_cost_exp*35:.2f}\n\n",
+                f"**Sessions:** {len(filtered_s)} | **Tokens:** {total_tok:,} | **Cost:** ${total_cost_exp:.4f} / ฿{total_cost_exp*USD_TO_THB:.2f}\n\n",
                 f"## Projects Active ({len(st.session_state.dash_projects)})\n"]
     for p in st.session_state.dash_projects:
         md_lines.append(f"- **{p['name']}** — {p.get('progress',0)}% | {p.get('desc','')}\n")

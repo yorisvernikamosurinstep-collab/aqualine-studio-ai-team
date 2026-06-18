@@ -6,12 +6,25 @@ import csv
 from datetime import datetime
 from io import StringIO
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_settings import inject_global_font_css
+
 st.set_page_config(page_title="Report Generator — AQUALINE", layout="wide", initial_sidebar_state="expanded")
+
+# 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
+st.session_state["_active_page"] = __file__
+
+# ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
+st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 
 if "GOOGLE_API_KEY" in st.secrets:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
 else:
     st.error("🔑 ไม่พบ GOOGLE_API_KEY ใน secrets.toml"); st.stop()
+
+# อัตราแลกเปลี่ยน USD→THB — ดึงจาก secrets.toml เดียวกับ ai_team.py (single source of truth)
+USD_TO_THB = float(st.secrets.get("USD_TO_THB", "35.0"))
 
 ANALYTICS_FILE = "analytics_data.json"
 
@@ -68,16 +81,13 @@ def call_gemini(prompt, max_tokens=4096):
     except Exception as e:
         return f"❌ {str(e)[:100]}"
 
-AGENT_NAMES = {
-    "A1":"นักกลยุทธ์การตลาด","A2":"ผู้จัดการโครงการ","A3":"นักเขียนคำโฆษณา",
-    "A4":"กราฟิกดีไซเนอร์","A5":"3D Visualizer","A6":"ผู้เชี่ยวชาญวิดีโอ",
-    "A7":"นักยิงแอด Facebook","A8":"ผู้เชี่ยวชาญ SEO","A9":"ฝ่ายบริการลูกค้า",
-    "A10":"นักวิเคราะห์ข้อมูล","A11":"ครีเอทีฟไดเรกเตอร์","A12":"คนเขียนสตอรี่บอร์ด",
-    "A13":"อาร์ตไดเรกเตอร์","A14":"AI Prompt Expert","A15":"นักวางระบบอัตโนมัติ",
-    "A16":"นักออกแบบบูธ","A17":"นักวิจัยตลาด","A18":"ฝ่ายตรวจสเปก",
-    "A19":"นักขายมือโปร","A20":"ที่ปรึกษากฎหมาย","A21":"นักเขียนบทความ",
-    "A22":"Pricing Expert","A23":"LINE OA Expert","A24":"TikTok & Reels","A25":"นักจิตวิทยาการตลาด",
-}
+# AGENT_NAMES ดึงจาก AGENT_META (agent_default_personas.py) — single source of truth
+# เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว หน้านี้จะเห็นผลตามอัตโนมัติ (รวม A26)
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from agent_default_personas import AGENT_META
+
+AGENT_NAMES = {aid: m["name"] for aid, m in AGENT_META.items()}
 
 # ─── Session state ───
 for k, v in [("rg_type","📊 Project Summary"), ("rg_report",""), ("rg_ts",""), ("rg_saved",[]), ("rg_show_raw",False)]:
@@ -87,14 +97,23 @@ for k, v in [("rg_type","📊 Project Summary"), ("rg_report",""), ("rg_ts",""),
 with st.sidebar:
     st.markdown("<div style='text-align:center;padding:14px 0 8px'><div style='font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:700;color:#f1f5f9'>AQUALINE</div><div style='font-size:10px;color:#334155;font-family:IBM Plex Mono,monospace'>AI LIVE CHAT</div></div>", unsafe_allow_html=True)
     st.markdown("---")
-    st.page_link("ai_team.py",                      label="🤖 AI Special Team")
-    st.page_link("pages/8_Workflow_Builder.py",      label="🏭 Content Factory")
-    st.page_link("pages/9_Live_Chat.py",             label="💬 Live Chat")
-    st.page_link("pages/10_Dashboard.py",            label="📊 Dashboard")
-    st.page_link("pages/11_Budget_Cost_Manager.py",  label="💰 Budget & Cost")
-    st.page_link("pages/12_Report_Generator.py",     label="📄 Report Generator")
-    st.page_link("pages/13_Agent_Persona_Editor.py", label="🧬 Agent Persona Editor")
-    st.page_link("pages/14_Settings_Config.py",      label="⚙️ Settings & Config")
+    st.page_link("ai_team.py",                          label="🤖 AI Special Team")
+    st.page_link("pages/1_งานบริษัทอาควาไลน์.py",        label="🏢 งานบริษัทอาควาไลน์")
+    st.page_link("pages/2_คุยกับ_AI_Agent.py",           label="💬 คุยกับ AI Agent")
+    st.page_link("pages/3_Live_Chat.py",                label="💬 Live Chat")
+    st.page_link("pages/4_สร้าง_Brief_ด่วน.py",          label="📝 สร้าง Brief ด่วน")
+    st.page_link("pages/5_Workflow_Builder.py",         label="🏭 Content Factory")
+    st.page_link("pages/6_ประวัติการประชุม.py",          label="🕐 ประวัติการประชุม")
+    st.page_link("pages/7_สถิติการใช้งาน.py",            label="📈 สถิติการใช้งาน")
+    st.page_link("pages/8_แฟ้มงาน.py",                   label="📁 แฟ้มงาน")
+    st.page_link("pages/9_คลัง_Prompt.py",               label="📚 คลัง Prompt")
+    st.page_link("pages/10_Dashboard.py",               label="📊 Dashboard")
+    st.page_link("pages/11_Budget_Cost_Manager.py",     label="💰 Budget & Cost")
+    st.page_link("pages/12_Report_Generator.py",        label="📄 Report Generator")
+    st.page_link("pages/13_Agent_Persona_Editor.py",    label="🧬 Agent Persona Editor")
+    st.page_link("pages/14_Settings_Config.py",         label="⚙️ Settings & Config")
+    st.page_link("pages/15_KONEX.py",                   label="🧠 KONEX")
+    st.page_link("pages/16_Design_UX_UI.py",            label="🎨 Design UX/UI")
 
 # ─── Header ───
 st.markdown("""
@@ -180,7 +199,7 @@ st.markdown("---")
 if st.button("🚀 Generate Report ด้วย AI", use_container_width=True, type="primary"):
     # Build context
     ctx = [f"# AQUALINE STUDIO Data\nวันที่: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n",
-           f"Sessions: {len(filt_s)} | Tokens: {total_tok:,} | Cost: ${total_cost:.4f} (฿{total_cost*35:.2f})\n\n"]
+           f"Sessions: {len(filt_s)} | Tokens: {total_tok:,} | Cost: ${total_cost:.4f} (฿{total_cost*USD_TO_THB:.2f})\n\n"]
     if inc_agents and all_a_used:
         ctx.append("## Agent Usage:\n")
         ac = {}
@@ -194,7 +213,7 @@ if st.button("🚀 Generate Report ด้วย AI", use_container_width=True, t
         pc = {}
         for s in filt_s: pc[s.get("project","?")] = pc.get(s.get("project","?"),0)+s.get("cost_usd",0)
         for p,c in sorted(pc.items(), key=lambda x:x[1], reverse=True):
-            ctx.append(f"- {p}: ${c:.4f} (฿{c*35:.2f})\n")
+            ctx.append(f"- {p}: ${c:.4f} (฿{c*USD_TO_THB:.2f})\n")
         ctx.append("\n")
     if inc_log:
         ctx.append("## Meeting Logs:\n")
@@ -257,7 +276,7 @@ if st.session_state.rg_report:
             file_name=f"report_{ts_fn}.md", mime="text/markdown", use_container_width=True, key="dl_md")
     with c3:
         jrpt = json.dumps({"report_type":rtyp,"generated_at":rts,"sessions":len(filt_s),
-                            "tokens":total_tok,"cost_usd":round(total_cost,6),"cost_thb":round(total_cost*35,2),
+                            "tokens":total_tok,"cost_usd":round(total_cost,6),"cost_thb":round(total_cost*USD_TO_THB,2),
                             "report":rpt}, ensure_ascii=False, indent=2)
         st.download_button("📦 JSON", data=jrpt.encode("utf-8"),
             file_name=f"report_{ts_fn}.json", mime="application/json", use_container_width=True, key="dl_json")

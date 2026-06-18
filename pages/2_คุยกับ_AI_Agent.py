@@ -1,9 +1,21 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests, json, base64, os, re, datetime
 import pdfplumber
 from docx import Document
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from kg_widget import render_full_graph, FULL_EXTRA_PX
+from ui_settings import get_kg_theme, inject_global_font_css
+
 st.set_page_config(page_title="Chat Agent — AQUALINE", layout="wide")
+
+# 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
+st.session_state["_active_page"] = __file__
+
+# ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
+st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 
 CONVO_FILE = "conversations.json"
 
@@ -94,32 +106,15 @@ def load_custom_personas() -> dict:
             pass
     return {}
 
+# AGENTS ดึงจาก AGENT_META (agent_default_personas.py) — single source of truth
+# เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว หน้านี้จะเห็นผลตามอัตโนมัติ (รวม A26)
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from agent_default_personas import AGENT_META
+
 AGENTS = {
-    "A1":  {"name":"นักกลยุทธ์การตลาด",   "icon":"👨‍💼","p":"วางแผนภาพรวมและจุดขาย",             "color":"#f59e0b"},
-    "A2":  {"name":"ผู้จัดการโครงการ",      "icon":"📋",  "p":"คุมเป้าหมายและเวลา",               "color":"#8b5cf6"},
-    "A3":  {"name":"นักเขียนคำโฆษณา",       "icon":"✍️",  "p":"สร้าง Content และ Caption โซเชียล", "color":"#ec4899"},
-    "A4":  {"name":"กราฟิกดีไซเนอร์",       "icon":"🎨",  "p":"ออกแบบ Visual",                     "color":"#06b6d4"},
-    "A5":  {"name":"3D Visualizer",          "icon":"🏗️",  "p":"เรนเดอร์ภาพสินค้าจริง",            "color":"#10b981"},
-    "A6":  {"name":"ผู้เชี่ยวชาญวิดีโอ",     "icon":"🎬",  "p":"สคริปต์และมุมกล้อง",               "color":"#f97316"},
-    "A7":  {"name":"นักยิงแอด Facebook",     "icon":"📈",  "p":"วางแผนสื่อโฆษณา",                  "color":"#3b82f6"},
-    "A8":  {"name":"ผู้เชี่ยวชาญ SEO",       "icon":"🌐",  "p":"ปรับแต่งเนื้อหาให้ติดอันดับ",       "color":"#84cc16"},
-    "A9":  {"name":"ฝ่ายบริการลูกค้า",       "icon":"💬",  "p":"วางแนวทางตอบคำถาม",                "color":"#14b8a6"},
-    "A10": {"name":"นักวิเคราะห์ข้อมูล",     "icon":"📊",  "p":"วิเคราะห์สถิติความคุ้มค่า",         "color":"#a78bfa"},
-    "A11": {"name":"ครีเอทีฟไดเรกเตอร์",     "icon":"💡",  "p":"คิดไอเดีย Big Idea",                "color":"#fbbf24"},
-    "A12": {"name":"คนเขียนสตอรี่บอร์ด",     "icon":"🎞️",  "p":"วางลำดับภาพเล่าเรื่อง",            "color":"#f472b6"},
-    "A13": {"name":"อาร์ตไดเรกเตอร์",        "icon":"✨",  "p":"ควบคุมคุณภาพงานดีไซน์",            "color":"#c084fc"},
-    "A14": {"name":"ผู้เชี่ยวชาญ AI Prompt", "icon":"🤖",  "p":"ปรับจูนคำสั่งให้ AI",              "color":"#67e8f9"},
-    "A15": {"name":"นักวางระบบอัตโนมัติ",    "icon":"⚙️",  "p":"เชื่อมระบบ Automation",            "color":"#6ee7b7"},
-    "A16": {"name":"นักออกแบบบูธ",           "icon":"🎪",  "p":"วางผังงานนิทรรศการ",               "color":"#fda4af"},
-    "A17": {"name":"นักวิจัยตลาด",           "icon":"🔍",  "p":"เจาะลึกข้อมูลคู่แข่ง Real-time",   "color":"#93c5fd"},
-    "A18": {"name":"ฝ่ายตรวจสเปกสินค้า",     "icon":"✅",  "p":"ตรวจสอบความถูกต้องทางเทคนิค",      "color":"#4ade80"},
-    "A19": {"name":"นักขายมือโปร",           "icon":"💰",  "p":"สร้างสคริปต์ปิดการขาย",            "color":"#fcd34d"},
-    "A20": {"name":"ที่ปรึกษากฎหมาย",        "icon":"⚖️",  "p":"ตรวจสอบข้อบังคับและลิขสิทธิ์",     "color":"#d1d5db"},
-    "A21": {"name":"นักเขียนบทความ",         "icon":"📝",  "p":"เขียนบทความยาว เนื้อหาเชิงลึก",    "color":"#e2e8f0"},
-    "A22": {"name":"นักวางราคา/Pricing",      "icon":"🧮",  "p":"วิเคราะห์ราคา ตั้ง Promo Bundle",  "color":"#fb923c"},
-    "A23": {"name":"ผู้เชี่ยวชาญ LINE OA",   "icon":"📱",  "p":"วางแผน LINE OA, CRM, Broadcast",   "color":"#4ade80"},
-    "A24": {"name":"TikTok & Reels",          "icon":"🎵",  "p":"Hook, Trend, Script TikTok/Reels",  "color":"#f9a8d4"},
-    "A25": {"name":"นักจิตวิทยาการตลาด",     "icon":"🧠",  "p":"Psychology ลูกค้า trigger การซื้อ", "color":"#c4b5fd"},
+    aid: {"name": m["name"], "icon": m["icon"], "p": m["p"], "color": m["color"]}
+    for aid, m in AGENT_META.items()
 }
 
 st.markdown("""
@@ -507,6 +502,36 @@ with st.sidebar:
 # ═══════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════
+# 🌐 KNOWLEDGE GRAPH — เครือข่าย AI Agent แบบ Real-time (เหมือนหน้า 1 และหน้าแรก)
+#    อยู่ด้านบนสุดของหน้า ตามที่กำหนด
+# ══════════════════════════════════════════════════════════════════
+_a26_phase = st.session_state.get("a26_research_status", "idle")
+_a26_ts    = st.session_state.get("a26_research_ts", "")
+if _a26_phase == "running":
+    _a26_status_text = "🌐 กำลังค้นหา Google..."
+elif _a26_phase == "done":
+    _a26_status_text = f"✅ อัปเดตล่าสุด {_a26_ts}"
+elif _a26_phase == "error":
+    _a26_status_text = "⚠️ ค้นหาไม่สำเร็จ"
+else:
+    _a26_status_text = "💬 พร้อมสนทนากับทีม AI 26 ตัว"
+
+st.markdown('<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;'
+            'color:#64748b;letter-spacing:2px;text-transform:uppercase;margin:4px 0 8px;'
+            'padding-bottom:6px;border-bottom:1px solid #1e293b">'
+            '🌐 Knowledge Graph — เครือข่าย AI Agent แบบ Real-time</div>', unsafe_allow_html=True)
+
+_GRAPH_HEIGHT = 560
+_kg_html = render_full_graph(
+    height=_GRAPH_HEIGHT,
+    a26_phase=_a26_phase,
+    a26_status=_a26_status_text,
+    title="AQUALINE NEURAL NETWORK",
+    theme=get_kg_theme(),
+)
+components.html(_kg_html, height=_GRAPH_HEIGHT + FULL_EXTRA_PX, scrolling=False)
 
 # ════════════════════════════════════════════
 # MULTI-AGENT MODE

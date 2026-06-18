@@ -1,0 +1,40 @@
+{
+  "products": [
+    {
+      "id": "6c3009decd",
+      "name": "รางน้ำฝนอาควาไลน์ ลินแดบ",
+      "drive_folder_url": "",
+      "drive_folder_id": "",
+      "notes": "",
+      "files": [],
+      "created_at": "2026-06-18T10:02:12"
+    },
+    {
+      "id": "9c6c105d29",
+      "name": "หลังคาอาควาไลน์ สมาร์ทซีม",
+      "drive_folder_url": "",
+      "drive_folder_id": "",
+      "notes": "",
+      "files": [],
+      "created_at": "2026-06-18T10:04:25"
+    },
+    {
+      "id": "72494b23b9",
+      "name": "ถังไฟเบอร์กลาส อาควาไลน์",
+      "drive_folder_url": "",
+      "drive_folder_id": "",
+      "notes": "",
+      "files": [],
+      "created_at": "2026-06-18T10:04:45"
+    },
+    {
+      "id": "2366ed314f",
+      "name": "ถังพลีเอทิลีน MAX Aqualine",
+      "drive_folder_url": "",
+      "drive_folder_id": "",
+      "notes": "",
+      "files": [],
+      "created_at": "2026-06-18T10:05:22"
+    }
+  ]
+}

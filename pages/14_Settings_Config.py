@@ -5,11 +5,21 @@ import json
 import os
 from datetime import datetime
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_settings import inject_global_font_css
+
 st.set_page_config(
     page_title="Settings & Config — AQUALINE",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
+st.session_state["_active_page"] = __file__
+
+# ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
+st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
 # API KEY — Settings หน้านี้เป็นหน้าตั้งค่า จึงไม่ stop ถ้าไม่มี key
@@ -126,14 +136,23 @@ with st.sidebar:
       <div style='font-size:10px;color:#334155;font-family:IBM Plex Mono,monospace'>AI LIVE CHAT</div>
     </div>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.page_link("ai_team.py",                        label="🤖 AI Special Team")
-    st.page_link("pages/8_Workflow_Builder.py",        label="🏭 Content Factory")
-    st.page_link("pages/9_Live_Chat.py",               label="💬 Live Chat")
-    st.page_link("pages/10_Dashboard.py",              label="📊 Dashboard")
-    st.page_link("pages/11_Budget_Cost_Manager.py",    label="💰 Budget & Cost")
-    st.page_link("pages/12_Report_Generator.py",       label="📄 Report Generator")
-    st.page_link("pages/13_Agent_Persona_Editor.py",   label="🧬 Agent Persona Editor")
-    st.page_link("pages/14_Settings_Config.py",        label="⚙️ Settings & Config")
+    st.page_link("ai_team.py",                          label="🤖 AI Special Team")
+    st.page_link("pages/1_งานบริษัทอาควาไลน์.py",        label="🏢 งานบริษัทอาควาไลน์")
+    st.page_link("pages/2_คุยกับ_AI_Agent.py",           label="💬 คุยกับ AI Agent")
+    st.page_link("pages/3_Live_Chat.py",                label="💬 Live Chat")
+    st.page_link("pages/4_สร้าง_Brief_ด่วน.py",          label="📝 สร้าง Brief ด่วน")
+    st.page_link("pages/5_Workflow_Builder.py",         label="🏭 Content Factory")
+    st.page_link("pages/6_ประวัติการประชุม.py",          label="🕐 ประวัติการประชุม")
+    st.page_link("pages/7_สถิติการใช้งาน.py",            label="📈 สถิติการใช้งาน")
+    st.page_link("pages/8_แฟ้มงาน.py",                   label="📁 แฟ้มงาน")
+    st.page_link("pages/9_คลัง_Prompt.py",               label="📚 คลัง Prompt")
+    st.page_link("pages/10_Dashboard.py",               label="📊 Dashboard")
+    st.page_link("pages/11_Budget_Cost_Manager.py",     label="💰 Budget & Cost")
+    st.page_link("pages/12_Report_Generator.py",        label="📄 Report Generator")
+    st.page_link("pages/13_Agent_Persona_Editor.py",    label="🧬 Agent Persona Editor")
+    st.page_link("pages/14_Settings_Config.py",         label="⚙️ Settings & Config")
+    st.page_link("pages/15_KONEX.py",                   label="🧠 KONEX")
+    st.page_link("pages/16_Design_UX_UI.py",            label="🎨 Design UX/UI")
     st.markdown("---")
     # Quick status
     key_ok = bool(STORED_KEY)
@@ -343,17 +362,13 @@ with tab_model:
 with tab_agent:
     st.markdown("<div class='section-title'>👥 ตั้งค่า Agent เริ่มต้น</div>", unsafe_allow_html=True)
 
-    AGENTS_LIST = {
-        "A1":"👨‍💼 นักกลยุทธ์การตลาด","A2":"📋 ผู้จัดการโครงการ","A3":"✍️ นักเขียนคำโฆษณา",
-        "A4":"🎨 กราฟิกดีไซเนอร์","A5":"🏗️ 3D Visualizer","A6":"🎬 ผู้เชี่ยวชาญวิดีโอ",
-        "A7":"📈 นักยิงแอด Facebook","A8":"🌐 ผู้เชี่ยวชาญ SEO","A9":"💬 ฝ่ายบริการลูกค้า",
-        "A10":"📊 นักวิเคราะห์ข้อมูล","A11":"💡 ครีเอทีฟไดเรกเตอร์","A12":"🎞️ คนเขียนสตอรี่บอร์ด",
-        "A13":"✨ อาร์ตไดเรกเตอร์","A14":"🤖 ผู้เชี่ยวชาญ AI Prompt","A15":"⚙️ นักวางระบบอัตโนมัติ",
-        "A16":"🎪 นักออกแบบบูธ","A17":"🔍 นักวิจัยตลาด","A18":"✅ ฝ่ายตรวจสเปกสินค้า",
-        "A19":"💰 นักขายมือโปร","A20":"⚖️ ที่ปรึกษากฎหมาย","A21":"📝 นักเขียนบทความและบล็อก",
-        "A22":"🧮 นักวางราคา / Pricing","A23":"📱 ผู้เชี่ยวชาญ LINE OA/CRM",
-        "A24":"🎵 TikTok & Reels Specialist","A25":"🧠 นักจิตวิทยาการตลาด",
-    }
+    # AGENTS_LIST ดึงจาก AGENT_META (agent_default_personas.py) — single source of truth
+    # เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว หน้านี้จะเห็นผลตามอัตโนมัติ (รวม A26)
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from agent_default_personas import AGENT_META
+
+    AGENTS_LIST = {aid: f'{m["icon"]} {m["name"]}' for aid, m in AGENT_META.items()}
 
     st.session_state.cfg_default_agents = st.multiselect(
         "Agent ที่เปิดใช้งานเมื่อเริ่มต้น",

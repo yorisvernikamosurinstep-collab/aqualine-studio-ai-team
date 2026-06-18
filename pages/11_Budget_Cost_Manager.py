@@ -7,11 +7,21 @@ from datetime import datetime
 import csv
 from io import StringIO
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_settings import inject_global_font_css
+
 st.set_page_config(
     page_title="Budget & Cost Manager — AQUALINE",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
+st.session_state["_active_page"] = __file__
+
+# ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
+st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
 # API KEY
@@ -61,8 +71,44 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
+# PERSISTENCE — budget_data.json (รายจ่าย/งบประมาณ ต้องอยู่ข้าม session ไม่หายตอนปิดเบราว์เซอร์)
+# ══════════════════════════════════════════════════════════════════
+BUDGET_DATA_FILE = "budget_data.json"
+
+def load_budget_data() -> dict:
+    if os.path.exists(BUDGET_DATA_FILE):
+        try:
+            with open(BUDGET_DATA_FILE, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            return {
+                "expenses": d.get("expenses", []),
+                "budget_limit": d.get("budget_limit", 5000.0),
+                "alert_pct": d.get("alert_pct", 80),
+            }
+        except Exception:
+            pass
+    return {"expenses": [], "budget_limit": 5000.0, "alert_pct": 80}
+
+def save_budget_data():
+    try:
+        with open(BUDGET_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "expenses": st.session_state.bcm_expenses,
+                "budget_limit": st.session_state.bcm_budget_limit,
+                "alert_pct": st.session_state.bcm_alert_pct,
+            }, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+# ══════════════════════════════════════════════════════════════════
 # SESSION STATE
 # ══════════════════════════════════════════════════════════════════
+if "bcm_data_loaded" not in st.session_state:
+    _bcm_persisted = load_budget_data()
+    st.session_state.bcm_expenses     = _bcm_persisted["expenses"]
+    st.session_state.bcm_budget_limit = _bcm_persisted["budget_limit"]
+    st.session_state.bcm_alert_pct    = _bcm_persisted["alert_pct"]
+    st.session_state.bcm_data_loaded  = True
 if "bcm_expenses"     not in st.session_state: st.session_state.bcm_expenses     = []
 if "bcm_budget_limit" not in st.session_state: st.session_state.bcm_budget_limit = 5000.0
 if "bcm_alert_pct"    not in st.session_state: st.session_state.bcm_alert_pct    = 80
@@ -87,16 +133,27 @@ with st.sidebar:
       <div style='font-size:10px;color:#334155;font-family:IBM Plex Mono,monospace'>AI LIVE CHAT</div>
     </div>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.page_link("ai_team.py",                        label="🤖 AI Special Team")
-    st.page_link("pages/8_Workflow_Builder.py",        label="🏭 Content Factory")
-    st.page_link("pages/9_Live_Chat.py",               label="💬 Live Chat")
-    st.page_link("pages/10_Dashboard.py",              label="📊 Dashboard")
-    st.page_link("pages/11_Budget_Cost_Manager.py",    label="💰 Budget & Cost")
-    st.page_link("pages/12_Report_Generator.py",       label="📄 Report Generator")
-    st.page_link("pages/13_Agent_Persona_Editor.py",   label="🧬 Agent Persona Editor")
-    st.page_link("pages/14_Settings_Config.py",        label="⚙️ Settings & Config")
+    st.page_link("ai_team.py",                          label="🤖 AI Special Team")
+    st.page_link("pages/1_งานบริษัทอาควาไลน์.py",        label="🏢 งานบริษัทอาควาไลน์")
+    st.page_link("pages/2_คุยกับ_AI_Agent.py",           label="💬 คุยกับ AI Agent")
+    st.page_link("pages/3_Live_Chat.py",                label="💬 Live Chat")
+    st.page_link("pages/4_สร้าง_Brief_ด่วน.py",          label="📝 สร้าง Brief ด่วน")
+    st.page_link("pages/5_Workflow_Builder.py",         label="🏭 Content Factory")
+    st.page_link("pages/6_ประวัติการประชุม.py",          label="🕐 ประวัติการประชุม")
+    st.page_link("pages/7_สถิติการใช้งาน.py",            label="📈 สถิติการใช้งาน")
+    st.page_link("pages/8_แฟ้มงาน.py",                   label="📁 แฟ้มงาน")
+    st.page_link("pages/9_คลัง_Prompt.py",               label="📚 คลัง Prompt")
+    st.page_link("pages/10_Dashboard.py",               label="📊 Dashboard")
+    st.page_link("pages/11_Budget_Cost_Manager.py",     label="💰 Budget & Cost")
+    st.page_link("pages/12_Report_Generator.py",        label="📄 Report Generator")
+    st.page_link("pages/13_Agent_Persona_Editor.py",    label="🧬 Agent Persona Editor")
+    st.page_link("pages/14_Settings_Config.py",         label="⚙️ Settings & Config")
+    st.page_link("pages/15_KONEX.py",                   label="🧠 KONEX")
+    st.page_link("pages/16_Design_UX_UI.py",            label="🎨 Design UX/UI")
     st.markdown("---")
     st.markdown("<div style='font-size:10px;color:#475569;font-family:IBM Plex Mono,monospace;padding:0 0 6px'>⚙️ ตั้งค่างบประมาณ</div>", unsafe_allow_html=True)
+    _prev_limit = st.session_state.bcm_budget_limit
+    _prev_alert = st.session_state.bcm_alert_pct
     st.session_state.bcm_budget_limit = st.number_input(
         "งบประมาณ/เดือน (฿)", min_value=100.0, max_value=100000.0,
         value=st.session_state.bcm_budget_limit, step=100.0, key="budget_limit_input"
@@ -105,6 +162,8 @@ with st.sidebar:
         "แจ้งเตือนเมื่อใช้ถึง (%)", 50, 95,
         st.session_state.bcm_alert_pct, key="alert_pct_slider"
     )
+    if st.session_state.bcm_budget_limit != _prev_limit or st.session_state.bcm_alert_pct != _prev_alert:
+        save_budget_data()
 
 # ══════════════════════════════════════════════════════════════════
 # HEADER
@@ -201,6 +260,7 @@ with col_form:
                 "session":  session,
                 "date":     datetime.now().strftime("%d/%m/%Y %H:%M"),
             })
+            save_budget_data()
             st.rerun()
 
     # ── Export CSV ──
@@ -220,6 +280,7 @@ with col_form:
         )
         if st.button("🗑️ ล้างข้อมูลทั้งหมด", use_container_width=True, key="clear_all_exp"):
             st.session_state.bcm_expenses = []
+            save_budget_data()
             st.rerun()
 
 with col_breakdown:
@@ -317,6 +378,7 @@ if filtered_expenses:
         with col_del:
             if st.button("✕", key=f"del_exp_{ri}", help="ลบรายการนี้"):
                 st.session_state.bcm_expenses.pop(ri)
+                save_budget_data()
                 st.rerun()
 else:
     st.markdown("""

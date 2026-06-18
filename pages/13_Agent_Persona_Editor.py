@@ -5,11 +5,21 @@ import json
 import os
 from datetime import datetime
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_settings import inject_global_font_css
+
 st.set_page_config(
     page_title="Agent Persona Editor — AQUALINE",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
+st.session_state["_active_page"] = __file__
+
+# ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
+st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════
 # API KEY
@@ -92,34 +102,16 @@ def load_full_personas_from_file() -> dict:
     return raw.get("__full__", {})
 
 # ══════════════════════════════════════════════════════════════════
-# DEFAULT AGENTS
+# DEFAULT AGENTS — ดึงจาก AGENT_META (agent_default_personas.py) — single source of truth
+# เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว หน้านี้จะเห็นผลตามอัตโนมัติ (รวม A26)
 # ══════════════════════════════════════════════════════════════════
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from agent_default_personas import AGENT_META
+
 DEFAULT_AGENTS = {
-    "A1":  {"name":"นักกลยุทธ์การตลาด",      "icon":"👨‍💼","role":"วางแผนภาพรวมและจุดขาย",               "color":"#38bdf8"},
-    "A2":  {"name":"ผู้จัดการโครงการ",         "icon":"📋", "role":"คุมเป้าหมายและเวลา",                  "color":"#a78bfa"},
-    "A3":  {"name":"นักเขียนคำโฆษณา",          "icon":"✍️", "role":"สร้าง Content และ Caption โซเชียล",   "color":"#34d399"},
-    "A4":  {"name":"กราฟิกดีไซเนอร์",          "icon":"🎨", "role":"ออกแบบ Visual",                       "color":"#f472b6"},
-    "A5":  {"name":"3D Visualizer",              "icon":"🏗️", "role":"เรนเดอร์ภาพสินค้าจริง",              "color":"#fb923c"},
-    "A6":  {"name":"ผู้เชี่ยวชาญวิดีโอ",        "icon":"🎬", "role":"สคริปต์และมุมกล้อง",                 "color":"#e879f9"},
-    "A7":  {"name":"นักยิงแอด Facebook",         "icon":"📈", "role":"วางแผนสื่อโฆษณา",                    "color":"#38bdf8"},
-    "A8":  {"name":"ผู้เชี่ยวชาญ SEO",           "icon":"🌐", "role":"ปรับแต่งเนื้อหาให้ติดอันดับ",        "color":"#34d399"},
-    "A9":  {"name":"ฝ่ายบริการลูกค้า",          "icon":"💬", "role":"วางแนวทางตอบคำถาม",                  "color":"#fbbf24"},
-    "A10": {"name":"นักวิเคราะห์ข้อมูล",        "icon":"📊", "role":"วิเคราะห์สถิติความคุ้มค่า",          "color":"#a78bfa"},
-    "A11": {"name":"ครีเอทีฟไดเรกเตอร์",        "icon":"💡", "role":"คิดไอเดีย Big Idea",                 "color":"#f59e0b"},
-    "A12": {"name":"คนเขียนสตอรี่บอร์ด",        "icon":"🎞️", "role":"วางลำดับภาพเล่าเรื่อง",             "color":"#34d399"},
-    "A13": {"name":"อาร์ตไดเรกเตอร์",           "icon":"✨", "role":"ควบคุมคุณภาพงานดีไซน์",             "color":"#f472b6"},
-    "A14": {"name":"ผู้เชี่ยวชาญ AI Prompt",    "icon":"🤖", "role":"ปรับจูนคำสั่งให้ AI",                "color":"#38bdf8"},
-    "A15": {"name":"นักวางระบบอัตโนมัติ",       "icon":"⚙️", "role":"เชื่อมระบบ Automation",              "color":"#94a3b8"},
-    "A16": {"name":"นักออกแบบบูธ",              "icon":"🎪", "role":"วางผังงานนิทรรศการ",                 "color":"#fb923c"},
-    "A17": {"name":"นักวิจัยตลาด",              "icon":"🔍", "role":"เจาะลึกข้อมูลคู่แข่ง",               "color":"#38bdf8"},
-    "A18": {"name":"ฝ่ายตรวจสเปกสินค้า",        "icon":"✅", "role":"ตรวจสอบความถูกต้องทางเทคนิค",       "color":"#34d399"},
-    "A19": {"name":"นักขายมือโปร",              "icon":"💰", "role":"สร้างสคริปต์ปิดการขาย",             "color":"#fbbf24"},
-    "A20": {"name":"ที่ปรึกษากฎหมาย",           "icon":"⚖️", "role":"ตรวจสอบข้อบังคับและลิขสิทธิ์",      "color":"#f87171"},
-    "A21": {"name":"นักเขียนบทความและบล็อก",    "icon":"📝", "role":"เขียนบทความยาว เนื้อหาเชิงลึก",      "color":"#a78bfa"},
-    "A22": {"name":"นักวางราคา / Pricing",       "icon":"🧮", "role":"วิเคราะห์ราคา Bundle และ Tier",       "color":"#34d399"},
-    "A23": {"name":"ผู้เชี่ยวชาญ LINE OA/CRM",  "icon":"📱", "role":"วางแผน LINE OA, Broadcast, CRM",     "color":"#38bdf8"},
-    "A24": {"name":"TikTok & Reels Specialist",   "icon":"🎵", "role":"Hook, Trend, Script TikTok/Reels",    "color":"#f472b6"},
-    "A25": {"name":"นักจิตวิทยาการตลาด",        "icon":"🧠", "role":"Psychology ลูกค้า trigger การซื้อ",   "color":"#a78bfa"},
+    aid: {"name": m["name"], "icon": m["icon"], "role": m["p"], "color": m["color"]}
+    for aid, m in AGENT_META.items()
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -175,14 +167,23 @@ with st.sidebar:
       <div style='font-size:10px;color:#334155;font-family:IBM Plex Mono,monospace'>AI LIVE CHAT</div>
     </div>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.page_link("ai_team.py",                        label="🤖 AI Special Team")
-    st.page_link("pages/8_Workflow_Builder.py",        label="🏭 Content Factory")
-    st.page_link("pages/9_Live_Chat.py",               label="💬 Live Chat")
-    st.page_link("pages/10_Dashboard.py",              label="📊 Dashboard")
-    st.page_link("pages/11_Budget_Cost_Manager.py",    label="💰 Budget & Cost")
-    st.page_link("pages/12_Report_Generator.py",       label="📄 Report Generator")
-    st.page_link("pages/13_Agent_Persona_Editor.py",   label="🧬 Agent Persona Editor")
-    st.page_link("pages/14_Settings_Config.py",        label="⚙️ Settings & Config")
+    st.page_link("ai_team.py",                          label="🤖 AI Special Team")
+    st.page_link("pages/1_งานบริษัทอาควาไลน์.py",        label="🏢 งานบริษัทอาควาไลน์")
+    st.page_link("pages/2_คุยกับ_AI_Agent.py",           label="💬 คุยกับ AI Agent")
+    st.page_link("pages/3_Live_Chat.py",                label="💬 Live Chat")
+    st.page_link("pages/4_สร้าง_Brief_ด่วน.py",          label="📝 สร้าง Brief ด่วน")
+    st.page_link("pages/5_Workflow_Builder.py",         label="🏭 Content Factory")
+    st.page_link("pages/6_ประวัติการประชุม.py",          label="🕐 ประวัติการประชุม")
+    st.page_link("pages/7_สถิติการใช้งาน.py",            label="📈 สถิติการใช้งาน")
+    st.page_link("pages/8_แฟ้มงาน.py",                   label="📁 แฟ้มงาน")
+    st.page_link("pages/9_คลัง_Prompt.py",               label="📚 คลัง Prompt")
+    st.page_link("pages/10_Dashboard.py",               label="📊 Dashboard")
+    st.page_link("pages/11_Budget_Cost_Manager.py",     label="💰 Budget & Cost")
+    st.page_link("pages/12_Report_Generator.py",        label="📄 Report Generator")
+    st.page_link("pages/13_Agent_Persona_Editor.py",    label="🧬 Agent Persona Editor")
+    st.page_link("pages/14_Settings_Config.py",         label="⚙️ Settings & Config")
+    st.page_link("pages/15_KONEX.py",                   label="🧠 KONEX")
+    st.page_link("pages/16_Design_UX_UI.py",            label="🎨 Design UX/UI")
     st.markdown("---")
     st.markdown("<div style='font-size:10px;color:#475569;font-family:IBM Plex Mono,monospace;padding:0 0 6px'>🤖 เลือก Agent</div>", unsafe_allow_html=True)
     aid_options = list(DEFAULT_AGENTS.keys())
@@ -283,7 +284,8 @@ with col_edit:
     # Color picker
     color_options = {"#38bdf8":"Sky Blue","#a78bfa":"Purple","#34d399":"Emerald",
                      "#f472b6":"Pink","#fb923c":"Orange","#fbbf24":"Amber",
-                     "#f87171":"Red","#e879f9":"Fuchsia","#94a3b8":"Slate"}
+                     "#f87171":"Red","#e879f9":"Fuchsia","#94a3b8":"Slate",
+                     "#f59e0b":"Gold","#22d3ee":"Cyan"}
     new_color = st.selectbox("สีประจำตัว", list(color_options.keys()),
         format_func=lambda x: f"● {color_options[x]}",
         index=list(color_options.keys()).index(custom.get("color", color)) if custom.get("color", color) in color_options else 0,
