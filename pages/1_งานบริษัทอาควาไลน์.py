@@ -14,8 +14,13 @@ import product_knowledge as pk
 import google_drive_integration as gd
 import meeting_engine
 import secretary_state
+import usage_logger
 
 st.set_page_config(page_title="งานบริษัทอาควาไลน์ — AQUALINE AI TEAM", layout="wide", initial_sidebar_state="expanded")
+
+# 🔐 กันเข้าหน้านี้ตรงผ่าน URL โดยไม่ผ่านด่านล็อกอินที่หน้าแรก
+from auth_guard import require_auth
+require_auth()
 
 # ฟอนต์/ขนาดตัวอักษรที่ผู้ใช้กำหนดเอง (หน้า Design UX/UI) — ใช้ร่วมกันทุกหน้า
 st.markdown(inject_global_font_css(), unsafe_allow_html=True)
@@ -503,11 +508,24 @@ for _kb_p in _kb_products:
                 st.rerun()
 
         if _kb_p.get("files"):
-            st.markdown("**ไฟล์ความรู้ที่แนบไว้:**")
+            _kb_hdr_col1, _kb_hdr_col2 = st.columns([4, 2])
+            with _kb_hdr_col1:
+                st.markdown("**ไฟล์ความรู้ที่แนบไว้:**")
+            with _kb_hdr_col2:
+                if st.button("🧹 ทำความสะอาดฐานความรู้ (ลบไฟล์ซ้ำ)", key=f"kb_consolidate_{_kb_p['id']}",
+                             use_container_width=True,
+                             help="ลบไฟล์ที่เนื้อหาซ้ำกันเป๊ะ และจำกัดไฟล์ที่ Pipeline บันทึกอัตโนมัติให้เหลือแค่ล่าสุด 20 ไฟล์ (Item 5)"):
+                    _kb_consolidate_result = pk.consolidate_product_knowledge(_kb_p["id"])
+                    st.success(
+                        f"✅ ลบไฟล์ซ้ำ {_kb_consolidate_result['removed_duplicates']} ไฟล์ "
+                        f"· ตัดไฟล์อัตโนมัติเก่า {_kb_consolidate_result['removed_old_auto']} ไฟล์ "
+                        f"· เหลือ {_kb_consolidate_result['remaining_files']} ไฟล์"
+                    )
+                    st.rerun()
             for _kb_f in _kb_p["files"]:
                 _kb_fc1, _kb_fc2 = st.columns([5, 1])
                 with _kb_fc1:
-                    _kb_src_icon = "🔗" if _kb_f.get("source") == "drive" else "📄"
+                    _kb_src_icon = "🔗" if _kb_f.get("source") == "drive" else ("🤖" if _kb_f.get("source") == "pipeline" else "📄")
                     st.markdown(f"{_kb_src_icon} `{_kb_f['filename']}` — {len(_kb_f.get('text','')):,} ตัวอักษร · เพิ่มเมื่อ {_kb_f.get('added_at','')}")
                 with _kb_fc2:
                     if st.button("🗑️", key=f"kb_delfile_{_kb_p['id']}_{_kb_f['filename']}"):
@@ -604,10 +622,32 @@ meet_selected_products = st.multiselect(
     key="meet_product_select",
 )
 
-_meet_run_col, _meet_clear_col = st.columns([1, 1])
+_meet_opt_col1, _meet_opt_col2 = st.columns([1, 1])
+with _meet_opt_col1:
+    meet_smart_filter = st.checkbox(
+        "🎯 กรองเฉพาะ Agent ที่เกี่ยวข้องกับหัวข้อ (ลดต้นทุน/เวลา)",
+        value=False, key="meet_smart_filter_toggle",
+        help="วิเคราะห์คำในหัวข้อก่อนเปิดประชุม แล้วเลือกเฉพาะ Agent ที่เกี่ยวข้อง — ถ้ากรองแล้วเหลือน้อยเกินไปจะใช้ทุกคนเหมือนเดิมโดยอัตโนมัติ (ไม่กระทบทีมถ้าไม่แน่ใจ ปล่อยปิดไว้ได้)",
+    )
+with _meet_opt_col2:
+    _pipeline_save_options = ["(ไม่บันทึกลง Knowledge Hub)"] + list(_kb_product_options.keys())
+    meet_pipeline_save_pid = st.selectbox(
+        "📦 Pipeline: บันทึกผลลง Knowledge Hub สินค้า (ไม่บังคับ)",
+        options=_pipeline_save_options,
+        format_func=lambda pid: pid if pid == "(ไม่บันทึกลง Knowledge Hub)" else _kb_product_options.get(pid, pid),
+        key="meet_pipeline_save_select",
+    )
+
+_meet_run_col, _meet_pipe_col, _meet_clear_col = st.columns([1, 1, 1])
 with _meet_run_col:
     meet_start = st.button("🚀 เริ่มประชุมแผนก", type="primary", use_container_width=True,
                             disabled=not (meet_topic.strip() and meet_selected_depts))
+with _meet_pipe_col:
+    meet_pipeline_start = st.button(
+        "⚡ Pipeline อัตโนมัติ (ค้นคู่แข่ง→ประชุม→สรุปมติ)", use_container_width=True,
+        disabled=not (meet_topic.strip() and meet_selected_depts),
+        help="รันต่อเนื่องในคำสั่งเดียว: A26 ค้นข้อมูลคู่แข่ง → เปิดประชุมแผนก → ประธาน AI สรุปมติ แล้วหยุดรอให้คุณตรวจทาน/ล็อกมติเองด้านล่าง (ไม่แจกงานอัตโนมัติ — บันทึกผลไว้ในเครื่อง/Knowledge Hub เท่านั้น ไม่เขียนกลับ Google Drive)",
+    )
 with _meet_clear_col:
     if st.button("🗑️ เริ่มประชุมใหม่ (ล้างประวัติ)", use_container_width=True):
         st.session_state["meet_results"] = []
@@ -616,28 +656,25 @@ with _meet_clear_col:
         st.session_state["meet_topic_locked"] = ""
         st.rerun()
 
-if meet_start:
-    meet_agent_ids = []
+
+def _build_meet_agent_ids(_topic):
+    _ids = []
     for _did in meet_selected_depts:
-        meet_agent_ids.extend(get_agents_by_department(_did))
-    meet_knowledge = pk.get_combined_knowledge_text(meet_selected_products or None)
-    meet_model = meeting_engine.get_best_model(API_KEY)
+        _ids.extend(get_agents_by_department(_did))
+    if meet_smart_filter:
+        _ids = meeting_engine.select_relevant_agents(_ids, _topic, min_keep=3)
+    return _ids
 
-    st.session_state["meet_results"] = []
-    st.session_state["meet_topic_locked"] = meet_topic.strip()
-    st.session_state["meet_summary"] = ""
-    st.session_state["meet_final_summary"] = ""
 
-    _kg_live_ph = st.empty()
-    _round_status_ph = st.empty()
-    _transcript_ph = st.empty()
-
-    meeting_ctx = ""
-    for _round_no in range(1, int(meet_rounds) + 1):
-        _round_status_ph.info(f"🗣️ รอบที่ {_round_no}/{int(meet_rounds)} — ทุกแผนกกำลังถกพร้อมกัน...")
+def _run_meeting_rounds(_topic, _knowledge, _model, _n_rounds, _kg_ph, _status_ph, _transcript_ph):
+    """รันประชุม N รอบจริง พร้อมบันทึกต้นทุนจริงทุกรอบผ่าน usage_logger — ใช้ร่วมกันทั้งปุ่มประชุมเดี่ยวและ Pipeline"""
+    _agent_ids = _build_meet_agent_ids(_topic)
+    meeting_ctx_local = ""
+    for _round_no in range(1, int(_n_rounds) + 1):
+        _status_ph.info(f"🗣️ รอบที่ {_round_no}/{int(_n_rounds)} — ทุกแผนกกำลังถกพร้อมกัน...")
 
         def _on_agent_done(aid, name, icon, dept_id, text, remaining_ids, round_no,
-                            _ph=_kg_live_ph, _tph=_transcript_ph, _rounds=int(meet_rounds)):
+                            _ph=_kg_ph, _tph=_transcript_ph, _rounds=int(_n_rounds)):
             _label = f"🗣️ รอบ {round_no}/{_rounds} · {icon} {name} ({aid}) ตอบแล้ว — เหลืออีก {len(remaining_ids)} คน"
             with _ph.container():
                 _live_html = render_full_graph(
@@ -658,20 +695,104 @@ if meet_start:
                     st.markdown(_r["text"])
                     st.markdown("---")
 
-        meeting_engine.run_meeting_round(
-            agent_ids=meet_agent_ids,
-            topic=st.session_state["meet_topic_locked"],
-            knowledge_text=meet_knowledge,
-            meeting_ctx=meeting_ctx,
+        _round_results = meeting_engine.run_meeting_round(
+            agent_ids=_agent_ids,
+            topic=_topic,
+            knowledge_text=_knowledge,
+            meeting_ctx=meeting_ctx_local,
             round_no=_round_no,
             api_key=API_KEY,
-            model_name=meet_model,
+            model_name=_model,
             max_workers=5,
             on_agent_done=_on_agent_done,
         )
-        meeting_ctx = meeting_engine.format_meeting_log(st.session_state["meet_results"])
+        usage_logger.log_meeting_batch(
+            [{"amount_thb": r.get("cost_thb", 0),
+              "desc": f"{r.get('icon','')} {r.get('name','')} ({r.get('aid','')}) รอบ {_round_no} - {_topic[:50]}"}
+             for r in _round_results],
+            session=_topic[:60],
+        )
+        meeting_ctx_local = meeting_engine.format_meeting_log(st.session_state["meet_results"])
+    _status_ph.success(f"✅ ประชุมเสร็จสิ้น {int(_n_rounds)} รอบ — {len(st.session_state['meet_results'])} ความเห็นทั้งหมด")
 
-    _round_status_ph.success(f"✅ ประชุมเสร็จสิ้น {int(meet_rounds)} รอบ — {len(st.session_state['meet_results'])} ความเห็นทั้งหมด")
+
+if meet_start:
+    meet_knowledge = pk.get_combined_knowledge_text(meet_selected_products or None)
+    meet_model = meeting_engine.get_best_model(API_KEY)
+
+    st.session_state["meet_results"] = []
+    st.session_state["meet_topic_locked"] = meet_topic.strip()
+    st.session_state["meet_summary"] = ""
+    st.session_state["meet_final_summary"] = ""
+
+    _kg_live_ph = st.empty()
+    _round_status_ph = st.empty()
+    _transcript_ph = st.empty()
+
+    _run_meeting_rounds(
+        st.session_state["meet_topic_locked"], meet_knowledge, meet_model, meet_rounds,
+        _kg_live_ph, _round_status_ph, _transcript_ph,
+    )
+
+elif meet_pipeline_start:
+    _pipe_topic = meet_topic.strip()
+    meet_knowledge = pk.get_combined_knowledge_text(meet_selected_products or None)
+    meet_model = meeting_engine.get_best_model(API_KEY)
+
+    st.session_state["meet_results"] = []
+    st.session_state["meet_topic_locked"] = _pipe_topic
+    st.session_state["meet_summary"] = ""
+    st.session_state["meet_final_summary"] = ""
+
+    with st.status("⚡ กำลังรัน Pipeline อัตโนมัติ...", expanded=True) as _pipe_status:
+        st.write("🕵️ ขั้นตอน 1/3 — A26 กำลังค้นข้อมูลคู่แข่ง/ตลาดที่เกี่ยวกับหัวข้อนี้...")
+        _pipe_research = run_a26_competitor_research(company, _pipe_topic)
+        st.session_state[RESEARCH_RESULT_KEY] = _pipe_research
+        st.session_state[RESEARCH_TS_KEY] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        st.session_state[RESEARCH_STATUS_KEY] = "error" if _pipe_research.startswith("⚠️") else "done"
+
+        st.write("🏛️ ขั้นตอน 2/3 — เปิดประชุมแผนกพร้อมผลค้นคู่แข่งล่าสุดเป็นข้อมูลประกอบ...")
+        _kg_live_ph = st.empty()
+        _round_status_ph = st.empty()
+        _transcript_ph = st.empty()
+        _meet_knowledge_with_research = (
+            meet_knowledge + "\n\n[ผลค้นคู่แข่งล่าสุดจาก A26]\n" + _pipe_research
+        ) if _pipe_research and not _pipe_research.startswith("⚠️") else meet_knowledge
+        _run_meeting_rounds(
+            _pipe_topic, _meet_knowledge_with_research, meet_model, meet_rounds,
+            _kg_live_ph, _round_status_ph, _transcript_ph,
+        )
+
+        st.write("📊 ขั้นตอน 3/3 — ประธาน AI กำลังสรุปมติ...")
+        _full_log = meeting_engine.format_meeting_log(st.session_state["meet_results"])
+        _pipe_summary = meeting_engine.summarize_meeting(_full_log, _pipe_topic, API_KEY, meet_model)
+        st.session_state["meet_summary"] = _pipe_summary
+
+        if meet_pipeline_save_pid != "(ไม่บันทึกลง Knowledge Hub)":
+            _save_text = (
+                f"# สรุปผลประชุม: {_pipe_topic}\n\n"
+                f"## ผลค้นคู่แข่ง (A26)\n{_pipe_research}\n\n"
+                f"## บทสรุปมติที่ประชุม\n{_pipe_summary}\n\n"
+                f"## บทสนทนาการประชุมฉบับเต็ม\n{_full_log}"
+            )
+            _save_result = pk.add_file_to_product(
+                meet_pipeline_save_pid,
+                f"pipeline_{_pipe_topic[:40]}_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+                _save_text, source="pipeline",
+            )
+            if _save_result.get("skipped_duplicate_of"):
+                st.write(f"♻️ เนื้อหาเหมือนกับไฟล์ \"{_save_result['skipped_duplicate_of']}\" ที่มีอยู่แล้ว — ข้ามการบันทึกซ้ำ (Item 5: memory consolidation)")
+            else:
+                st.write(f"💾 บันทึกผลลง Knowledge Hub: {_kb_product_options.get(meet_pipeline_save_pid, meet_pipeline_save_pid)} แล้ว (บันทึกในเครื่อง ไม่เขียนกลับ Google Drive)")
+                # 🧹 Item 5: รวบรวม/ทำความสะอาดฐานความรู้สินค้านี้หลังเพิ่มไฟล์ใหม่ทุกครั้ง
+                # (ลบไฟล์ซ้ำที่หลุดมา + จำกัดไฟล์อัตโนมัติจาก Pipeline ไม่ให้บวมเกินไปในระยะยาว)
+                pk.consolidate_product_knowledge(meet_pipeline_save_pid)
+
+        _pipe_status.update(
+            label="✅ Pipeline เสร็จสมบูรณ์ — เลื่อนลงไปตรวจทานมติ แล้วล็อก/แจกงานต่อด้านล่าง (ยังไม่มีการแจกงานอัตโนมัติ)",
+            state="complete", expanded=False,
+        )
+
 elif st.session_state.get("meet_results"):
     st.caption(f"💬 ผลประชุมล่าสุด: \"{st.session_state.get('meet_topic_locked','')}\" — {len(st.session_state['meet_results'])} ความเห็น")
     with st.expander("📜 ดูบทสนทนาการประชุมทั้งหมด", expanded=False):
@@ -716,6 +837,7 @@ if st.session_state.get("meet_results"):
         with _reb_col2:
             if st.button("🔒 ล็อกมติฉบับนี้ → ส่งต่อให้เลขานุการแจกงาน", type="primary", use_container_width=True):
                 st.session_state["meet_final_summary"] = st.session_state["meet_summary"]
+                st.session_state["meet_confirm_dispatch"] = False
                 st.success("✅ ล็อกมติแล้ว — เลื่อนลงไปด้านล่างเพื่อให้เลขานุการแจกงานต่อแผนก")
                 st.rerun()
 
@@ -726,7 +848,11 @@ if st.session_state.get("meet_final_summary"):
     st.markdown('<div class="section-title">👩‍💼 เลขานุการ AI — แจกงานต่อแผนก</div>', unsafe_allow_html=True)
     st.markdown(f"""<div class="research-card">{st.session_state["meet_final_summary"]}</div>""", unsafe_allow_html=True)
 
-    if st.button("👩‍💼 ส่งต่อให้เลขานุการแจกงาน", type="primary", use_container_width=True):
+    _confirm_dispatch = st.checkbox(
+        "✅ ฉันตรวจทานมติข้างต้นแล้ว ยืนยันให้เลขานุการแจกงานจริงไปยังทุกแผนก (ขั้นนี้จะสร้างงานค้างจริงในกระดานงานด้านล่าง)",
+        key="meet_confirm_dispatch",
+    )
+    if st.button("👩‍💼 ส่งต่อให้เลขานุการแจกงาน", type="primary", use_container_width=True, disabled=not _confirm_dispatch):
         with st.spinner("⏳ เลขานุการ AI กำลังแตกมติเป็นงานต่อแผนก..."):
             _breakdown = meeting_engine.secretary_breakdown(
                 st.session_state["meet_topic_locked"], st.session_state["meet_final_summary"],

@@ -23,6 +23,8 @@ import streamlit.components.v1 as _components
  
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+if "cube_solved" not in st.session_state:
+    st.session_state.cube_solved = False
 
 # ตรวจ query param ?auth=1 จาก rubiks unlock
 if not st.session_state.authenticated:
@@ -30,8 +32,9 @@ if not st.session_state.authenticated:
         st.session_state.authenticated = True
         st.query_params.clear()
         st.rerun()
- 
-if not st.session_state.authenticated:
+
+# ── ด่าน 1: ไขรูบิค (คลิกเร็ว 3 ครั้งที่ลูกคิวบ์) ──
+if not st.session_state.authenticated and not st.session_state.cube_solved:
     _lock_path = _os.path.join(_os.path.dirname(__file__), "rubiks_lock.html")
     with open(_lock_path, "r", encoding="utf-8") as _f:
         _lock_html = _f.read()
@@ -49,10 +52,41 @@ if not st.session_state.authenticated:
     """, unsafe_allow_html=True)
 
     if st.button("UNLOCK", key="rubik_unlock_btn"):
-        st.session_state.authenticated = True
+        st.session_state.cube_solved = True
         st.rerun()
 
     _components.html(_lock_html, height=700, scrolling=False)
+    st.stop()
+
+# ── ด่าน 2: ใส่รหัสผ่าน (หลังไขรูบิคสำเร็จ) — เทียบกับ APP_PASSWORD ใน secrets.toml ──
+if not st.session_state.authenticated and st.session_state.cube_solved:
+    st.markdown("""
+    <style>
+      #MainMenu, header, footer {visibility: hidden;}
+      .block-container {padding-top: 20vh !important; max-width: 420px !important; margin: 0 auto !important;}
+      section[data-testid="stSidebar"] {display: none;}
+      [data-testid="stAppViewContainer"] {background: #000 !important;}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        "<p style='color:#fff;text-align:center;font-size:22px;letter-spacing:1px;'>"
+        "🔐 ใส่รหัสผ่านเพื่อเข้าระบบ</p>",
+        unsafe_allow_html=True,
+    )
+    with st.form("pw_gate_form"):
+        _pw_input = st.text_input(
+            "รหัสผ่าน", type="password", label_visibility="collapsed", placeholder="รหัสผ่าน",
+        )
+        _pw_submit = st.form_submit_button("เข้าสู่ระบบ", use_container_width=True)
+
+    if _pw_submit:
+        if _pw_input == st.secrets.get("APP_PASSWORD", ""):
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้งครับ")
+
     st.stop()
 
 # ── PDF Export ──
@@ -455,7 +489,9 @@ def get_pixel_art(agent_id: str, size: int = 80) -> str:
 # 👥 TEAM CONFIG — สร้างจาก AGENT_META (agent_default_personas.py) ทุกตัว A1-A26
 # เพิ่ม/แก้ agent ที่ AGENT_META ที่เดียว แล้วทุกหน้าจะเห็นผลตามกันอัตโนมัติ
 # ==========================================
-from agent_default_personas import AGENT_DEFAULT_PERSONAS, AGENT_META, AGENT_IDS
+from agent_default_personas import AGENT_DEFAULT_PERSONAS, AGENT_META, AGENT_IDS, get_department_id, get_department_sop
+import meeting_engine  # ไม่มี streamlit side-effect — ใช้ select_relevant_agents (Smart Filter) ร่วมกับหน้า "งานบริษัทอาควาไลน์"
+import usage_logger    # บันทึกต้นทุนจริงของหน้าแรกเข้า budget_data.json เดียวกับทุกหน้า
 
 @st.cache_resource
 def get_team_config():
@@ -1110,6 +1146,7 @@ with st.sidebar:
     st.header("⚡ โหมดการประชุม")
     parallel_mode = st.toggle("🚀 Parallel Mode (เร็ว 3x)", value=False, help="Agent ที่ไม่ depend กันจะทำงานพร้อมกัน ประหยัดเวลามาก แต่ไม่เห็น live stream")
     debate_mode = st.toggle("🥊 Debate Mode (Round 2)", value=False, help="หลังประชุมรอบแรก ให้ Agent comment งานกันและกัน")
+    smart_filter_mode = st.toggle("🎯 Smart Filter (กรอง Agent ตามหัวข้อ)", value=False, help="วิเคราะห์คำในบรีฟก่อนเริ่ม แล้วเลือกเฉพาะ Agent ที่เกี่ยวข้องจากที่เลือกไว้ — ลดต้นทุน/เวลา ถ้ากรองแล้วเหลือน้อยเกินไปจะใช้ทุกคนที่เลือกไว้เหมือนเดิมโดยอัตโนมัติ")
 
     # ── 🌏 V9: Language Toggle ──
     st.markdown("---")
@@ -1880,6 +1917,9 @@ with col_main:
         elif not prompt_input.strip():
             st.error("⚠️ กรุณาพิมพ์บรีฟงานหรือเลือก Template ก่อนครับ")
         else:
+            # 🎯 Smart Filter (Item 1) — กรองเฉพาะ Agent ที่เกี่ยวข้องกับบรีฟจากที่เลือกไว้ (opt-in)
+            if smart_filter_mode:
+                selected_agents = meeting_engine.select_relevant_agents(selected_agents, prompt_input, min_keep=3)
             # 🔐 ล็อก session ทันที
             st.session_state.is_running = True
             # รีเซ็ต token counter สำหรับ session ใหม่
@@ -1943,6 +1983,9 @@ with col_main:
                    > Default Persona เชิงลึก (AGENT_DEFAULT_PERSONAS) > 'p' สั้น ๆ (fallback)
                    เพื่อให้แต่ละ Agent ตอบมีน้ำเสียง/มุมมอง/ขอบเขตความเชี่ยวชาญที่ต่างกันจริง"""
                 role_desc = get_agent_role_desc(aid)
+                # SOP (Item 2): ฉีดวิธีทำงานมาตรฐานของแผนกต้นสังกัด agent นี้ ถ้ามีนิยามไว้
+                sop_text = get_department_sop(get_department_id(aid))
+                role_desc = f"{role_desc}\n\n{sop_text}" if sop_text else role_desc
                 search_note = " (สำคัญมาก: ค้นหาข้อมูลที่เป็นปัจจุบัน และพิมพ์ลิงก์ URL แหล่งอ้างอิงด้วย)" if use_search else ""
                 # BUG2: จำกัด meeting_ctx ที่ส่งใน prompt ไม่ให้เกิน 8000 chars
                 safe_ctx = meeting_ctx[-8000:] if len(meeting_ctx) > 8000 else meeting_ctx
@@ -2125,6 +2168,14 @@ with col_main:
                 st.session_state.session_cost_usd,
                 st.session_state.ui_lang,
                 brief=prompt_input,
+            )
+
+            # 💰 Item 7: บันทึกต้นทุนจริงของการประชุมนี้เข้า budget_data.json เดียวกับทุกหน้า
+            usage_logger.log_usage(
+                amount_thb=st.session_state.session_cost_usd * USD_TO_THB,
+                desc=f"ประชุมทีม ({len(selected_agents)} agent) - {prompt_input[:50]}",
+                session=st.session_state.current_project,
+                category="Gemini Flash",
             )
 # ==========================================
     # FIX #9: MEETING HISTORY
@@ -2638,34 +2689,4 @@ with col_health:
             <div class="analytics-num">${total_cost:.3f}</div>
             <div class="analytics-label">TOTAL COST USD (est.)</div>
         </div>
-        """, unsafe_allow_html=True)
-
-        # Top Agents
-        if a.get("agent_usage"):
-            st.markdown("**🏆 Agent ที่ใช้บ่อยที่สุด**")
-            sorted_agents = sorted(a["agent_usage"].items(), key=lambda x: x[1], reverse=True)[:5]
-            for aid, cnt in sorted_agents:
-                agent_name = team_data.get(aid, {}).get("name", aid)
-                agent_icon = team_data.get(aid, {}).get("icon", "🤖")
-                st.markdown(f"<div class='status-card'>{agent_icon} {agent_name}<br><b>{cnt} ครั้ง</b></div>", unsafe_allow_html=True)
-
-        # Top Projects
-        if a.get("project_count"):
-            st.markdown("**📁 Project ที่ประชุมบ่อย**")
-            sorted_proj = sorted(a["project_count"].items(), key=lambda x: x[1], reverse=True)[:3]
-            for pname, pcnt in sorted_proj:
-                st.markdown(f"<div class='status-card'>📁 {pname}<br><b>{pcnt} session</b></div>", unsafe_allow_html=True)
-
-        # Weekly trend
-        if a.get("weekly"):
-            st.markdown("**📅 การใช้งานรายสัปดาห์ (5 สัปดาห์ล่าสุด)**")
-            sorted_weeks = sorted(a["weekly"].items())[-5:]
-            for wk, wcount in sorted_weeks:
-                bar = "█" * min(wcount, 20)
-                st.caption(f"{wk}: {bar} ({wcount})")
-
-        if st.button("🗑️ ล้างข้อมูล Analytics", use_container_width=True):
-            st.session_state.analytics = {"sessions": [], "agent_usage": {}, "project_count": {}, "weekly": {}}
-            save_analytics(st.session_state.analytics)
-            st.success("ล้างแล้ว!")
-            st.rerun()
+        """, unsa

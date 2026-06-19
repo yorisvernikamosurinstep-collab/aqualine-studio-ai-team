@@ -18,6 +18,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# 🔐 กันเข้าหน้านี้ตรงผ่าน URL โดยไม่ผ่านด่านล็อกอินที่หน้าแรก
+from auth_guard import require_auth
+require_auth()
+
 # 🧭 PAGE-VISIT MARKER
 st.session_state["_active_page"] = __file__
 

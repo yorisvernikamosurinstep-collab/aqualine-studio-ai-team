@@ -17,6 +17,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 🔐 กันเข้าหน้านี้ตรงผ่าน URL โดยไม่ผ่านด่านล็อกอินที่หน้าแรก
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from auth_guard import require_auth
+require_auth()
+
 # 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
 st.session_state["_active_page"] = __file__
 

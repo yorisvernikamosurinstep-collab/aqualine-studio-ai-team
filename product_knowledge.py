@@ -9,6 +9,7 @@ product_knowledge.py — ฐานความรู้สินค้า (Knowl
 บันทึกถาวรลงไฟล์ product_knowledge.json (อยู่ข้าง ๆ ไฟล์นี้) และใช้ร่วมกันทุกหน้าในแอป
 """
 
+import hashlib
 import json
 import os
 import uuid
@@ -98,18 +99,89 @@ def update_product(product_id: str, **fields) -> None:
     save_kb(data)
 
 
-def add_file_to_product(product_id: str, filename: str, text: str, source: str = "upload") -> None:
+def _content_hash(text: str) -> str:
+    """แฮชเนื้อหาไฟล์ (ตัดช่องว่าง/ขึ้นบรรทัดส่วนเกินออกก่อน) ใช้เทียบไฟล์ซ้ำแบบไม่สนใจรูปแบบเล็กน้อยที่ต่างกัน"""
+    normalized = " ".join((text or "").split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def add_file_to_product(product_id: str, filename: str, text: str, source: str = "upload",
+                         dedup: bool = True) -> dict:
+    """เพิ่มไฟล์เข้าฐานความรู้สินค้า
+    ถ้า dedup=True (ค่าเริ่มต้น — Item 5: memory consolidation) จะข้ามการเพิ่มถ้ามีไฟล์ที่เนื้อหา
+    เหมือนกันอยู่แล้วในสินค้านี้ (เทียบจาก content hash ไม่สนใจชื่อไฟล์) — กันฐานความรู้บวมจากการบันทึก
+    ซ้ำซ้อน เช่น Pipeline ที่รันหัวข้อใกล้เคียงกันหลายรอบ
+    คืน {"added": bool, "skipped_duplicate_of": str|None} ให้ฝั่งเรียกใช้เช็คผลได้"""
     data = load_kb()
+    new_hash = _content_hash(text)
+    result = {"added": False, "skipped_duplicate_of": None}
     for p in data["products"]:
-        if p["id"] == product_id:
-            p.setdefault("files", []).append({
-                "filename": filename,
-                "text": text,
-                "source": source,
-                "added_at": datetime.now().isoformat(timespec="seconds"),
-            })
-            break
+        if p["id"] != product_id:
+            continue
+        if dedup:
+            dup = next((f for f in p.get("files", []) if f.get("content_hash") == new_hash), None)
+            if dup:
+                result["skipped_duplicate_of"] = dup["filename"]
+                return result
+        p.setdefault("files", []).append({
+            "filename": filename,
+            "text": text,
+            "source": source,
+            "added_at": datetime.now().isoformat(timespec="seconds"),
+            "content_hash": new_hash,
+        })
+        result["added"] = True
+        break
+    if result["added"]:
+        save_kb(data)
+    return result
+
+
+def consolidate_product_knowledge(product_id: str, max_auto_files: int = 20) -> dict:
+    """รูทีนรวบรวม/ทำความสะอาดฐานความรู้ของสินค้านี้ (Item 5 — memory consolidation):
+    1) ลบไฟล์ที่เนื้อหาซ้ำกันเป๊ะ (เทียบ content hash) เก็บไว้แค่ฉบับล่าสุดของแต่ละชุดที่ซ้ำกัน
+    2) backfill content_hash ให้ไฟล์เก่าที่เพิ่มไว้ก่อนมีระบบ dedup (ยังไม่มีฟิลด์นี้)
+    3) ถ้าไฟล์ source="pipeline" (บันทึกอัตโนมัติจาก Pipeline) มีเกิน max_auto_files ไฟล์
+       จะตัดไฟล์ pipeline ที่เก่าที่สุดทิ้ง เหลือไว้แค่ล่าสุด max_auto_files ไฟล์
+       (ไฟล์ source="upload"/"drive" ที่ผู้ใช้ตั้งใจเพิ่ม/ซิงค์เองจะไม่ถูกแตะต้องเลย)
+    คืน {"removed_duplicates": int, "removed_old_auto": int, "remaining_files": int}"""
+    data = load_kb()
+    summary = {"removed_duplicates": 0, "removed_old_auto": 0, "remaining_files": 0}
+    for p in data["products"]:
+        if p["id"] != product_id:
+            continue
+        files = p.get("files", [])
+        for f in files:
+            if not f.get("content_hash"):
+                f["content_hash"] = _content_hash(f.get("text", ""))
+
+        files.sort(key=lambda f: f.get("added_at", ""))  # เก่า -> ใหม่
+        seen_at = {}
+        deduped = []
+        for f in files:
+            h = f["content_hash"]
+            if h in seen_at:
+                summary["removed_duplicates"] += 1
+                deduped[seen_at[h]] = f  # เจอซ้ำ -> แทนที่ด้วยฉบับล่าสุด (เก็บฉบับใหม่สุดของแต่ละ hash ไว้)
+            else:
+                seen_at[h] = len(deduped)
+                deduped.append(f)
+        files = deduped
+
+        auto_files = sorted((f for f in files if f.get("source") == "pipeline"),
+                             key=lambda f: f.get("added_at", ""))
+        if len(auto_files) > max_auto_files:
+            n_to_drop = len(auto_files) - max_auto_files
+            drop_ids = {id(f) for f in auto_files[:n_to_drop]}
+            files = [f for f in files if id(f) not in drop_ids]
+            summary["removed_old_auto"] = n_to_drop
+
+        p["files"] = files
+        summary["remaining_files"] = len(files)
+        break
+
     save_kb(data)
+    return summary
 
 
 def delete_file_from_product(product_id: str, filename: str) -> None:

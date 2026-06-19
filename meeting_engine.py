@@ -29,6 +29,7 @@ from agent_default_personas import (
     get_agent_role_desc,
     get_department_id,
     get_department_info,
+    get_department_sop,
 )
 
 # ════════════════════════════════════════════════════════════════════
@@ -146,6 +147,60 @@ def lang_suffix(lang: str = "TH") -> str:
 
 
 # ════════════════════════════════════════════════════════════════════
+# 💰 COST/TOKEN ESTIMATOR — สูตรเดียวกับ ai_team.py (estimate_tokens/update_token_counter)
+# เพื่อให้ตัวเลขจากสองหน้าเทียบกันได้ ใช้คำนวณต้นทุนจริงของ "งานบริษัทอาควาไลน์" ที่เดิมไม่มีการบันทึกเลย
+# ════════════════════════════════════════════════════════════════════
+_GEMINI_INPUT_USD_PER_M = 0.075
+_GEMINI_OUTPUT_USD_PER_M = 0.30
+
+
+def estimate_tokens_th(text: str) -> int:
+    """ประมาณ token count สำหรับ mixed Thai/EN text
+    - ภาษาอังกฤษ: ~4 chars/token
+    - ภาษาไทย: ~2 chars/token (Thai unicode = 1 char แต่มักเป็น 1-2 tokens)"""
+    if not text:
+        return 0
+    thai_chars = sum(1 for c in text if "฀" <= c <= "๿")
+    other_chars = len(text) - thai_chars
+    return max(1, (thai_chars // 2) + (other_chars // 4))
+
+
+def estimate_gemini_cost_thb(prompt_text: str, response_text: str, usd_to_thb: float = 35.0) -> tuple:
+    """ประมาณต้นทุนจริง (Gemini 2.5 Flash) จาก token ที่ใช้จริงของการเรียกครั้งนี้
+    คืน (tokens_est, cost_usd, cost_thb)"""
+    in_tok = estimate_tokens_th(prompt_text)
+    out_tok = estimate_tokens_th(response_text)
+    cost_usd = (in_tok / 1_000_000 * _GEMINI_INPUT_USD_PER_M) + (out_tok / 1_000_000 * _GEMINI_OUTPUT_USD_PER_M)
+    return in_tok + out_tok, cost_usd, cost_usd * usd_to_thb
+
+
+# ════════════════════════════════════════════════════════════════════
+# 🎯 RELEVANCE FILTER — กรอง agent ที่เกี่ยวข้องกับหัวข้อก่อนเปิดดีเบตเต็มวง (progressive disclosure)
+# เทียบคำในหัวข้อกับคำอธิบายสั้น ('p')/ชื่อแผนกของแต่ละ agent แบบเร็ว ไม่ต้องยิง API เพิ่ม
+# ════════════════════════════════════════════════════════════════════
+def select_relevant_agents(agent_ids: list, topic: str, min_keep: int = 3) -> list:
+    """กรอง agent ที่ "น่าจะเกี่ยวข้อง" กับหัวข้อนี้จาก agent_ids ที่ผู้ใช้เลือกไว้ทั้งหมด
+    ถ้าหัวข้อว่าง หรือกรองแล้วเหลือน้อยกว่า min_keep ตัว จะคืน agent_ids เดิมทั้งหมด
+    (กันกรองพลาดจนทีมขาดมุมมอง — ฟิลเตอร์นี้เป็น opt-in ที่ผู้ใช้เลือกเปิดเองเท่านั้น)"""
+    if not topic or not topic.strip():
+        return list(agent_ids)
+    topic_lower = topic.lower()
+    topic_words = set(re.findall(r"[a-zA-Zก-๙]{2,}", topic_lower))
+    if not topic_words:
+        return list(agent_ids)
+    relevant = []
+    for aid in agent_ids:
+        meta = AGENT_META.get(aid, {})
+        dept = get_department_info(aid)
+        haystack = f"{meta.get('p','')} {dept.get('name','')} {dept.get('desc','')}".lower()
+        if any(word in haystack for word in topic_words):
+            relevant.append(aid)
+    if len(relevant) >= min_keep:
+        return relevant
+    return list(agent_ids)
+
+
+# ════════════════════════════════════════════════════════════════════
 # 🗣️ MEETING PROMPT — มี "ตัวตน" ของแต่ละ agent + ฐานความรู้ + กติกาเถียงกันจริง (anti-echo)
 # ════════════════════════════════════════════════════════════════════
 def build_agent_prompt(aid: str, topic: str, knowledge_text: str, meeting_ctx: str, round_no: int,
@@ -155,12 +210,15 @@ def build_agent_prompt(aid: str, topic: str, knowledge_text: str, meeting_ctx: s
     icon = meta.get("icon", "🤖")
     dept = get_department_info(aid)
     role_desc = get_agent_role_desc(aid, custom_personas, meta.get("p", ""))
+    sop = get_department_sop(get_department_id(aid))
     kb = smart_chunk_knowledge(knowledge_text, 12000) if knowledge_text else ""
 
     parts = [
         f"คุณคือ {icon} {name} ({aid}) สังกัด{dept.get('icon','')} {dept.get('name','แผนกทั่วไป')} ของบริษัท AQUALINE",
         role_desc,
     ]
+    if sop:
+        parts.append(sop)
     if kb:
         parts.append(f"--- ความรู้สินค้า/บริษัท AQUALINE (ใช้อ้างอิงเสมอ ห้ามมั่วหรือแต่งข้อมูลที่ไม่มีในนี้) ---\n{kb}")
     parts.append(f"--- หัวข้อการประชุมวันนี้ ---\n{topic}")
@@ -198,7 +256,8 @@ def run_meeting_round(agent_ids: list, topic: str, knowledge_text: str, meeting_
     เสมอ แม้ว่า HTTP call จริงจะวิ่งอยู่ใน worker thread ก็ตาม) — ใช้ wiring Knowledge Graph แบบ real-time ได้
 
     คืน list ของ dict ตามลำดับที่ "เสร็จก่อน-หลังจริง":
-      [{"aid","name","icon","dept_id","round","text"}, ...]
+      [{"aid","name","icon","dept_id","round","text","tokens_est","cost_thb"}, ...]
+    (tokens_est/cost_thb เป็นค่าประมาณต้นทุนจริงของการเรียก Gemini ครั้งนี้ — ดู estimate_gemini_cost_thb)
     """
     results = []
     remaining = set(agent_ids)
@@ -207,14 +266,18 @@ def run_meeting_round(agent_ids: list, topic: str, knowledge_text: str, meeting_
         meta = AGENT_META.get(aid, {})
         prompt = build_agent_prompt(aid, topic, knowledge_text, meeting_ctx, round_no, custom_personas, lang)
         text = call_gemini(prompt, model_name, api_key)
-        return aid, meta.get("name", aid), meta.get("icon", "🤖"), get_dept_for_result(aid), text
+        tokens_est, _cost_usd, cost_thb = estimate_gemini_cost_thb(prompt, text)
+        return aid, meta.get("name", aid), meta.get("icon", "🤖"), get_dept_for_result(aid), text, tokens_est, cost_thb
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_run_one, aid): aid for aid in agent_ids}
         for future in concurrent.futures.as_completed(futures):
-            aid, name, icon, dept_id, text = future.result()
+            aid, name, icon, dept_id, text, tokens_est, cost_thb = future.result()
             remaining.discard(aid)
-            entry = {"aid": aid, "name": name, "icon": icon, "dept_id": dept_id, "round": round_no, "text": text}
+            entry = {
+                "aid": aid, "name": name, "icon": icon, "dept_id": dept_id, "round": round_no, "text": text,
+                "tokens_est": tokens_est, "cost_thb": cost_thb,
+            }
             results.append(entry)
             if on_agent_done:
                 on_agent_done(aid, name, icon, dept_id, text, list(remaining), round_no)
