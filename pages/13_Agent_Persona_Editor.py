@@ -8,6 +8,7 @@ from datetime import datetime
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui_settings import inject_global_font_css
+from date_context import current_datetime_context_th
 
 st.set_page_config(
     page_title="Agent Persona Editor — AQUALINE",
@@ -145,7 +146,7 @@ def get_model(k):
 
 def call_agent_with_persona(system_prompt: str, user_msg: str) -> str:
     model = get_model(API_KEY)
-    combined = f"{system_prompt}\n\nคำถาม: {user_msg}\n\nตอบในฐานะ persona นี้:"
+    combined = f"{system_prompt}\n\n{current_datetime_context_th()}\n\nคำถาม: {user_msg}\n\nตอบในฐานะ persona นี้:"
     resp = requests.post(
         f"https://generativelanguage.googleapis.com/v1beta/{model}:generateContent?key={API_KEY}",
         json={"contents":[{"parts":[{"text":combined}]}],

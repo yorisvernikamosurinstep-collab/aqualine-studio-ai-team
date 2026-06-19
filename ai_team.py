@@ -491,6 +491,7 @@ def get_pixel_art(agent_id: str, size: int = 80) -> str:
 # ==========================================
 from agent_default_personas import AGENT_DEFAULT_PERSONAS, AGENT_META, AGENT_IDS, get_department_id, get_department_sop
 import meeting_engine  # ไม่มี streamlit side-effect — ใช้ select_relevant_agents (Smart Filter) ร่วมกับหน้า "งานบริษัทอาควาไลน์"
+from date_context import current_datetime_context_th
 import usage_logger    # บันทึกต้นทุนจริงของหน้าแรกเข้า budget_data.json เดียวกับทุกหน้า
 
 @st.cache_resource
@@ -876,7 +877,8 @@ def build_chairman_prompt(brief: str, meeting_log: str,
         f"ประเมินว่าดีหรือไม่ดี และเสนอแนวทางที่ดีที่สุด\n"
         f"{lang_note}\n"
         f"{format_map.get(mode, format_map['auto'])}\n"
-        f"กฎ: ถ้าผลออกมาไม่ดีพอ ต้องเสนอแนวทางใหม่เสมอ"
+        f"กฎ: ถ้าผลออกมาไม่ดีพอ ต้องเสนอแนวทางใหม่เสมอ\n\n"
+        f"{current_datetime_context_th()}"
     )
     user_prompt = (
         f"{'คำสั่งพิเศษ: ' + custom_instruction + chr(10)*2 if custom_instruction.strip() else ''}"
@@ -2001,6 +2003,7 @@ with col_main:
                 ) if safe_ctx.strip() else ""
                 return (f"{mem_ctx}"
                         f"คุณคือ {name} ({role_desc}){search_note}\n"
+                        f"{current_datetime_context_th()}\n\n"
                         f"แฟ้มงาน: {st.session_state.current_project}\n"
                         f"บรีฟ: {prompt_input}\nลิงก์: {target_link}\n"
                         f"[ข้อมูล]:\n{final_knowledge}\n"

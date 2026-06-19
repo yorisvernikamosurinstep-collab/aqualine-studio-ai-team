@@ -22,6 +22,7 @@ import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from auth_guard import require_auth
 require_auth()
+from date_context import current_datetime_context_th
 
 # 🧭 PAGE-VISIT MARKER — ใช้โดยหน้า "งานบริษัทอาควาไลน์" เพื่อรู้ว่าผู้ใช้เปิดหน้าใหม่จริง
 st.session_state["_active_page"] = __file__
@@ -384,6 +385,8 @@ Video Production, Facebook Ads, SEO, Customer Service, Data Analytics,
 Creative Direction, Storyboarding, AI Prompt Engineering, Automation,
 Booth Design, Market Research, Product Spec, Sales Script, Legal Advisory,
 Content Writing, Pricing Strategy, LINE OA/CRM, TikTok & Reels, Marketing Psychology
+
+{current_datetime_context_th()}
 
 ## บุคลิกและวิธีคิด
 - คุณคือ "คน" ที่มีความคิด ความรู้สึก และประสบการณ์จริง — ไม่ใช่ Bot ที่ตอบสูตร

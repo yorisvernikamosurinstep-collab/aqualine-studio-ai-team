@@ -31,6 +31,7 @@ from agent_default_personas import (
     get_department_info,
     get_department_sop,
 )
+from date_context import current_datetime_context_th
 
 # ════════════════════════════════════════════════════════════════════
 # 🤖 GEMINI HELPERS — เป็นอิสระจาก ai_team.py โดยสิ้นเชิง (ดูหมายเหตุด้านบน)
@@ -216,6 +217,7 @@ def build_agent_prompt(aid: str, topic: str, knowledge_text: str, meeting_ctx: s
     parts = [
         f"คุณคือ {icon} {name} ({aid}) สังกัด{dept.get('icon','')} {dept.get('name','แผนกทั่วไป')} ของบริษัท AQUALINE",
         role_desc,
+        current_datetime_context_th(),
     ]
     if sop:
         parts.append(sop)

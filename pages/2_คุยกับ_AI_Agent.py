@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from kg_widget import render_full_graph, FULL_EXTRA_PX
 from ui_settings import get_kg_theme, inject_global_font_css
+from date_context import current_datetime_context_th
 
 st.set_page_config(page_title="Chat Agent — AQUALINE", layout="wide")
 
@@ -301,6 +302,7 @@ def call_agent_stream(agent_id, history, user_msg, processed_files=None, url_con
     system = custom_p if custom_p else (f"คุณคือ {info['name']} ({info['p']}) ผู้เชี่ยวชาญของ AQUALINE STUDIO "
               f"ตอบในมุมมองของคุณ ตอบเป็นภาษาไทย กระชับและได้ใจความ "
               f"ถ้ามีไฟล์หรือ URL แนบให้วิเคราะห์และตอบตามเนื้อหานั้น")
+    system = f"{system}\n\n{current_datetime_context_th()}"
     messages = []
     for h in history[-8:]:
         messages.append({"role":"user",  "parts":[{"text":h.get("user_text","")}]})
@@ -345,6 +347,7 @@ def call_multi_agents(agent_ids: list, history: list, user_msg: str, processed_f
         custom_p = _personas.get(aid, "").strip()
         system = custom_p if custom_p else (f"คุณคือ {info['name']} ({info['p']}) ผู้เชี่ยวชาญของ AQUALINE STUDIO "
                   f"ตอบในมุมมองของคุณ ตอบเป็นภาษาไทย กระชับและได้ใจความ")
+        system = f"{system}\n\n{current_datetime_context_th()}"
         messages = []
         for h in history[-4:]:
             messages.append({"role":"user",  "parts":[{"text":h.get("user_text","")}]})
