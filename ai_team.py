@@ -2689,4 +2689,34 @@ with col_health:
             <div class="analytics-num">${total_cost:.3f}</div>
             <div class="analytics-label">TOTAL COST USD (est.)</div>
         </div>
-        """, unsa
+        """, unsafe_allow_html=True)
+
+        # Top Agents
+        if a.get("agent_usage"):
+            st.markdown("**🏆 Agent ที่ใช้บ่อยที่สุด**")
+            sorted_agents = sorted(a["agent_usage"].items(), key=lambda x: x[1], reverse=True)[:5]
+            for aid, cnt in sorted_agents:
+                agent_name = team_data.get(aid, {}).get("name", aid)
+                agent_icon = team_data.get(aid, {}).get("icon", "🤖")
+                st.markdown(f"<div class='status-card'>{agent_icon} {agent_name}<br><b>{cnt} ครั้ง</b></div>", unsafe_allow_html=True)
+
+        # Top Projects
+        if a.get("project_count"):
+            st.markdown("**📁 Project ที่ประชุมบ่อย**")
+            sorted_proj = sorted(a["project_count"].items(), key=lambda x: x[1], reverse=True)[:3]
+            for pname, pcnt in sorted_proj:
+                st.markdown(f"<div class='status-card'>📁 {pname}<br><b>{pcnt} session</b></div>", unsafe_allow_html=True)
+
+        # Weekly trend
+        if a.get("weekly"):
+            st.markdown("**📅 การใช้งานรายสัปดาห์ (5 สัปดาห์ล่าสุด)**")
+            sorted_weeks = sorted(a["weekly"].items())[-5:]
+            for wk, wcount in sorted_weeks:
+                bar = "█" * min(wcount, 20)
+                st.caption(f"{wk}: {bar} ({wcount})")
+
+        if st.button("🗑️ ล้างข้อมูล Analytics", use_container_width=True):
+            st.session_state.analytics = {"sessions": [], "agent_usage": {}, "project_count": {}, "weekly": {}}
+            save_analytics(st.session_state.analytics)
+            st.success("ล้างแล้ว!")
+            st.rerun()
