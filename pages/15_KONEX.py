@@ -517,6 +517,7 @@ def call_konex(user_msg: str, max_tokens: int = 3000, task_type: str = "analysis
 # SIDEBAR
 # ══════════════════════════════════════════════════════════════════
 with st.sidebar:
+    st.markdown("<style>[data-testid='stSidebarNav']{display:none}</style>", unsafe_allow_html=True)
     st.markdown("""
     <div style='text-align:center;padding:14px 0 8px'>
       <div style='font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:700;color:#f1f5f9'>AQUALINE</div>

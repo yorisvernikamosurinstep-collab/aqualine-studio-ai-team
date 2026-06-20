@@ -99,6 +99,7 @@ for k, v in [("rg_type","📊 Project Summary"), ("rg_report",""), ("rg_ts",""),
 
 # ─── Sidebar ───
 with st.sidebar:
+    st.markdown("<style>[data-testid='stSidebarNav']{display:none}</style>", unsafe_allow_html=True)
     st.markdown("<div style='text-align:center;padding:14px 0 8px'><div style='font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:700;color:#f1f5f9'>AQUALINE</div><div style='font-size:10px;color:#334155;font-family:IBM Plex Mono,monospace'>AI LIVE CHAT</div></div>", unsafe_allow_html=True)
     st.markdown("---")
     st.page_link("ai_team.py",                          label="🤖 AI Special Team")
