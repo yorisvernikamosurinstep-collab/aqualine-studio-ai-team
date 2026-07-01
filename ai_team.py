@@ -419,18 +419,76 @@ def save_vault(vault_data):
 # ==========================================
 # 🧠 MEMORY SYSTEM — ฟังก์ชันช่วยจัดการ Memory
 # ==========================================
-def get_memory_context(project_data: dict) -> str:
-    """สร้าง memory context string สำหรับใส่ใน prompt ทุก agent"""
+def retrieve_relevant_memories(query_text: str, memory_text: str, top_n: int = 7) -> str:
+    """กรองเฉพาะ Bullet Memory ที่เกี่ยวข้องกับบรีฟปัจจุบันด้วยคีย์เวิร์ดแบบง่าย (Smart Local RAG)"""
+    if not memory_text.strip() or not query_text.strip():
+        return memory_text
+    
+    # แยกหัวข้อย่อย (Bullet points) ออกมาทีละบรรทัด
+    bullets = []
+    for line in memory_text.split("\n"):
+        line_s = line.strip()
+        if line_s.startswith(("•", "-", "*")) or (line_s and line_s[0].isdigit() and "." in line_s[:3]):
+            bullets.append(line_s)
+            
+    if not bullets:
+        return memory_text # ถ้าไม่ใช่รูปแบบ bullet ให้ส่งคืนทั้งหมด
+        
+    # ดึงคำสำคัญที่มีความยาวมากกว่า 2 ตัวอักษร
+    keywords = [w.lower() for w in re.findall(r"\w+", query_text) if len(w) > 2]
+    if not keywords:
+        return "\n".join(bullets[:top_n]) # ถ้าสกัดคีย์เวิร์ดไม่ได้ ให้ส่ง top_n ตัวแรก
+        
+    scored_bullets = []
+    for bullet in bullets:
+        score = 0
+        bullet_lower = bullet.lower()
+        for kw in keywords:
+            if kw in bullet_lower:
+                score += 1.5  # ตรงคีย์เวิร์ดให้คะแนนเพิ่ม
+        scored_bullets.append((score, bullet))
+        
+    # เรียงลำดับจากคะแนนสูงสุดลงมา
+    scored_bullets.sort(key=lambda x: x[0], reverse=True)
+    
+    # ดึงเฉพาะข้อที่มีคะแนนความสอดคล้อง > 0
+    relevant = [b for s, b in scored_bullets if s > 0]
+    if not relevant:
+        relevant = [b for s, b in scored_bullets[:top_n]] # ถ้าไม่มีข้อไหนตรงเลย ให้ใช้ top_n ข้อแรก
+    else:
+        relevant = relevant[:top_n]
+        
+    return "\n".join(relevant)
+
+def get_memory_context(project_data: dict, query_text: str = "") -> str:
+    """สร้าง memory context string สำหรับใส่ใน prompt โดยมีการทำ Smart RAG ดึงข้อมูลที่สอดคล้อง"""
     parts = []
     memory = project_data.get("memory", "").strip()
     pinned = [f.strip() for f in project_data.get("pinned_facts", []) if f.strip()]
     updated_at = project_data.get("memory_updated_at", "")
+    
+    # ดึงข้อมูลผลตอบรับโฆษณาจริงที่เคยยิงแล้ว (Closed-loop performance learning)
+    perf_list = project_data.get("ad_performance", [])
 
     if pinned:
         parts.append("📌 ข้อเท็จจริงสำคัญ (Pinned Facts):\n" + "\n".join(f"• {f}" for f in pinned))
+        
     if memory:
         ts_note = f" (อัปเดตล่าสุด: {updated_at})" if updated_at else ""
-        parts.append(f"🧠 สรุปความรู้สะสมของ project นี้{ts_note}:\n{memory}")
+        # ใช้ Smart RAG กรอง Bullet Memory ที่เกี่ยวข้องเท่านั้น
+        filtered_mem = retrieve_relevant_memories(query_text, memory)
+        parts.append(f"🧠 ความจำสะสมที่เกี่ยวข้องกับเรื่องนี้{ts_note}:\n{filtered_mem}")
+        
+    if perf_list:
+        perf_lines = []
+        for p in perf_list[-8:]: # ดึงสถิติยิงจริง 8 ล่าสุด
+            date_s = p.get("date", "")
+            ctr_s = f"CTR: {p.get('ctr', 0)}%"
+            cpm_s = f"CPM: {p.get('cpm', 0)}B"
+            conv_s = f"Conv: {p.get('conversions', 0)}"
+            note_s = f" ({p.get('notes', '')})" if p.get('notes') else ""
+            perf_lines.append(f"• [{date_s}] {ctr_s} | {cpm_s} | {conv_s}{note_s}")
+        parts.append("📈 ผลลัพธ์โฆษณาจริงในแคมเปญที่ผ่านมา (Closed-Loop Learnings):\n" + "\n".join(perf_lines))
 
     if not parts:
         return ""
@@ -466,6 +524,48 @@ def generate_memory_summary(meeting_log: str, brief: str, model_name: str) -> st
 ตอบเป็นภาษาไทย เฉพาะ bullet points ไม่ต้องมีคำนำ"""
     result = "".join(list(call_gemini_true_stream(prompt, model_name, max_output_tokens=2048)))
     return result
+
+# ══════════════════════════════════════════════════════════════════
+# 🎭 EMOTIONAL TONE DETECTOR — ทำให้ Agent ปรับน้ำเสียงตาม brief
+# ══════════════════════════════════════════════════════════════════
+def detect_brief_emotion(brief: str) -> dict:
+    """วิเคราะห์ brief แล้วคืน emotional context สำหรับ inject ใน agent prompt"""
+    text = brief.lower()
+    # ด่วน/วิกฤต
+    if any(k in text for k in ["ด่วน","เร่ง","วันนี้","urgent","asap","ทันที","ด่วนมาก"]):
+        return {
+            "tone": "urgent",
+            "instruction": "[⚡ บรีฟนี้เร่งด่วน — ตอบกระชับ ตรงประเด็น ไม่ต้องมีบทนำยาว ขึ้นด้วย Action Items ทันที]",
+            "emoji": "⚡"
+        }
+    # วิเคราะห์ข้อมูล
+    elif any(k in text for k in ["วิเคราะห์","ผล","ctr","roas","cpm","data","ตัวเลข","สถิติ"]):
+        return {
+            "tone": "analytical",
+            "instruction": "[📊 บรีฟนี้เชิงวิเคราะห์ — ตอบด้วยตัวเลข ข้อมูล และเหตุผลเชิงข้อเท็จจริง ใช้ตารางเปรียบเทียบถ้าเหมาะสม]",
+            "emoji": "📊"
+        }
+    # สร้างสรรค์/ไอเดีย
+    elif any(k in text for k in ["ไอเดีย","creative","concept","คิด","สร้างสรรค์","แนวคิด"]):
+        return {
+            "tone": "creative",
+            "instruction": "[💡 บรีฟนี้ต้องการความคิดสร้างสรรค์ — กล้านำเสนอไอเดียแปลกใหม่ ยกตัวอย่างจริงเยอะๆ]",
+            "emoji": "💡"
+        }
+    # กลยุทธ์ระยะยาว
+    elif any(k in text for k in ["กลยุทธ์","strategy","แผน","ระยะยาว","quarter","ปี"]):
+        return {
+            "tone": "strategic",
+            "instruction": "[🗺️ บรีฟนี้เชิงกลยุทธ์ — วิเคราะห์ภาพใหญ่ ระบุ timeline ชัดเจน เชื่อมโยงกับเป้าหมายธุรกิจ]",
+            "emoji": "🗺️"
+        }
+    # ปกติ
+    return {
+        "tone": "balanced",
+        "instruction": "",
+        "emoji": "💬"
+    }
+
 
 if "vault" not in st.session_state: st.session_state.vault = load_vault()
 if "current_project" not in st.session_state: st.session_state.current_project = list(st.session_state.vault.keys())[0]
@@ -1980,7 +2080,7 @@ with col_main:
             _lang_sfx = lang_suffix(_lang)
 
             def build_prompt(aid, name, icon, p, meeting_ctx, use_search=False):
-                """สร้าง prompt โดยรองรับ custom persona + language + PROJECT MEMORY
+                """สร้าง prompt โดยรองรับ custom persona + language + PROJECT MEMORY + EMOTIONAL TONE
                    ลำดับความสำคัญของ "ตัวตน" ที่ฉีดเข้าไป: Custom Persona ของผู้ใช้
                    > Default Persona เชิงลึก (AGENT_DEFAULT_PERSONAS) > 'p' สั้น ๆ (fallback)
                    เพื่อให้แต่ละ Agent ตอบมีน้ำเสียง/มุมมอง/ขอบเขตความเชี่ยวชาญที่ต่างกันจริง"""
@@ -1992,9 +2092,24 @@ with col_main:
                 # BUG2: จำกัด meeting_ctx ที่ส่งใน prompt ไม่ให้เกิน 8000 chars
                 safe_ctx = meeting_ctx[-8000:] if len(meeting_ctx) > 8000 else meeting_ctx
                 # ── MEMORY: ดึง context จาก vault ใส่ขึ้นต้น prompt ──
-                mem_ctx = get_memory_context(st.session_state.vault[st.session_state.current_project])
+                mem_ctx = get_memory_context(st.session_state.vault[st.session_state.current_project], prompt_input)
+                # ── 🎭 EMOTIONAL TONE: ปรับน้ำเสียงตาม brief ──
+                emotion = detect_brief_emotion(prompt_input)
+                tone_note = f"\n{emotion['instruction']}" if emotion['instruction'] else ""
+                # ── 🤝 CROSS-AGENT AWARENESS: ให้ agent อ้างอิงเพื่อนร่วมทีมได้ ──
+                cross_agent_note = ""
+                if safe_ctx.strip() and len(selected_agents) > 1:
+                    # สร้าง list ชื่อ agent ที่พูดไปแล้วในการประชุม
+                    agents_spoken = []
+                    for other_aid in selected_agents:
+                        if other_aid != aid and team_data[other_aid]['name'] in safe_ctx:
+                            agents_spoken.append(f"{team_data[other_aid]['icon']} {team_data[other_aid]['name']}")
+                    if agents_spoken:
+                        cross_agent_note = (
+                            f"\n\n[🤝 ทีมที่ได้พูดไปแล้ว: {', '.join(agents_spoken)}\n"
+                            f"คุณสามารถเห็นด้วย/ค้าน/เสริมความเห็นเพื่อนร่วมทีมได้ โดยอ้างชื่อตรงๆ เช่น 'เห็นด้วยกับ {agents_spoken[0] if agents_spoken else ''}...' หรือ 'ขอเสริมประเด็นของ...' ]"
+                        )
                 # ANTI-CONVERGENCE: กันไม่ให้ agent ที่พูดทีหลังตอบคล้อยตาม/ซ้ำกับคนก่อนหน้า
-                # (มีแค่ตอนมี meeting_ctx จริง ๆ เท่านั้น — ถ้าเป็นคนแรกในห้องประชุมจะไม่มีข้อความนี้)
                 anti_echo_note = (
                     "\n⚠️ ก่อนตอบ: อ่าน 'ความเห็นก่อนหน้า' เพื่อรู้ว่าทีมพูดถึงอะไรไปแล้ว "
                     "แต่ห้ามตอบซ้ำ ห้ามแค่เห็นด้วย/สรุปสิ่งที่คนอื่นพูดไปแล้วอีกรอบ "
@@ -2002,12 +2117,13 @@ with col_main:
                     "และเติมประเด็น/มุมที่ยังไม่มีใครพูดถึง ถ้าจะค้านหรือเสริมความเห็นก่อนหน้า ให้บอกตรง ๆ ว่าเพราะอะไร"
                 ) if safe_ctx.strip() else ""
                 return (f"{mem_ctx}"
-                        f"คุณคือ {name} ({role_desc}){search_note}\n"
+                        f"คุณคือ {name} ({role_desc}){search_note}{tone_note}\n"
                         f"{current_datetime_context_th()}\n\n"
                         f"แฟ้มงาน: {st.session_state.current_project}\n"
                         f"บรีฟ: {prompt_input}\nลิงก์: {target_link}\n"
                         f"[ข้อมูล]:\n{final_knowledge}\n"
                         f"ความเห็นก่อนหน้า: {safe_ctx}"
+                        f"{cross_agent_note}"
                         f"{anti_echo_note}"
                         f"{_lang_sfx}")
 

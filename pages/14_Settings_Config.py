@@ -28,7 +28,9 @@ st.markdown(inject_global_font_css(), unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════════════════
 # API KEY — Settings หน้านี้เป็นหน้าตั้งค่า จึงไม่ stop ถ้าไม่มี key
 # ══════════════════════════════════════════════════════════════════
-STORED_KEY = st.secrets.get("GOOGLE_API_KEY", "")
+STORED_KEY      = st.secrets.get("GOOGLE_API_KEY", "")
+STORED_CLAUDE   = st.secrets.get("ANTHROPIC_API_KEY", "")
+STORED_ANDRO_ENG = st.secrets.get("ANDROMEDA_ENGINE", "gemini")
 
 # ══════════════════════════════════════════════════════════════════
 # CSS
@@ -255,13 +257,108 @@ with tab_api:
         5. Restart Streamlit server
         </div>""", unsafe_allow_html=True)
 
+    # ── Claude / Anthropic API Section ──────────────────────────────
+    st.markdown("<div class='section-title'>🟣 Anthropic Claude API</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="setting-card">
+      <div class="setting-card-title">Claude API Key</div>
+      <div class="setting-card-desc">
+        ใช้โดย <b>Chairman Master</b> และ <b>Andromeda (Claude Mode)</b> — เก็บใน <code style='color:#a78bfa'>.streamlit/secrets.toml</code>
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+    if STORED_CLAUDE:
+        masked_c = STORED_CLAUDE[:10] + "••••••••••" + STORED_CLAUDE[-4:]
+        st.markdown(f"""
+        <div style='background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:8px;
+          padding:12px 16px;font-family:IBM Plex Mono,monospace;font-size:12px;color:#a78bfa;margin-bottom:12px'>
+          ✅ พบ Claude Key: {masked_c}
+        </div>""", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style='background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:8px;
+          padding:12px 16px;font-family:IBM Plex Mono,monospace;font-size:12px;color:#f87171;margin-bottom:12px'>
+          ❌ ไม่พบ ANTHROPIC_API_KEY — Chairman Master ใช้งานไม่ได้
+        </div>""", unsafe_allow_html=True)
+
+    test_claude_inp = st.text_input(
+        "ทดสอบ Claude Key (ไม่บังคับ)", type="password",
+        placeholder="sk-ant-api03-...", key="test_claude_inp"
+    )
+    if st.button("🔍 ทดสอบ Claude Key", key="test_claude_btn"):
+        key_c = test_claude_inp.strip() or STORED_CLAUDE
+        if key_c:
+            with st.spinner("ทดสอบ Claude API..."):
+                try:
+                    r = requests.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={"x-api-key": key_c, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                        json={"model": "claude-haiku-4-5", "max_tokens": 32,
+                              "messages": [{"role": "user", "content": "Say OK"}]},
+                        timeout=15
+                    )
+                    if r.status_code == 200:
+                        st.success("✅ Claude Key ถูกต้อง — claude-haiku-4-5 พร้อมใช้งาน")
+                    else:
+                        st.error(f"❌ Claude Error {r.status_code}: {r.text[:200]}")
+                except Exception as e:
+                    st.error(f"❌ Connection Error: {str(e)[:80]}")
+        else:
+            st.warning("⚠️ ไม่พบ Claude Key")
+
+    with st.expander("📖 วิธีขอ Anthropic Claude API Key"):
+        st.markdown("""
+        <div style='font-size:12px;color:#94a3b8;line-height:1.8'>
+        1. ไปที่ <a href='https://console.anthropic.com/' target='_blank' style='color:#a78bfa'>console.anthropic.com</a><br>
+        2. Login แล้วไปที่ <b>API Keys</b><br>
+        3. คลิก <b>Create Key</b><br>
+        4. Copy key แล้วเพิ่มใน <code style='color:#a78bfa'>.streamlit/secrets.toml</code>:<br>
+        <pre style='background:rgba(30,41,59,.6);padding:10px;border-radius:6px;margin-top:6px;
+          font-family:IBM Plex Mono,monospace;font-size:11px;color:#a78bfa'>ANTHROPIC_API_KEY = "sk-ant-api03-..."</pre>
+        5. Restart Streamlit server
+        </div>""", unsafe_allow_html=True)
+
+    # ── Andromeda Engine Selector ─────────────────────────────────────
+    st.markdown("<div class='section-title'>🔭 Andromeda Engine Configuration</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="setting-card">
+      <div class="setting-card-title">เลือก AI Engine สำหรับ Andromeda Pre-Meeting Auditor</div>
+      <div class="setting-card-desc">ตั้งค่าใน <code style='color:#38bdf8'>.streamlit/secrets.toml</code> หรือเลือกชั่วคราวด้านล่าง</div>
+    </div>""", unsafe_allow_html=True)
+
+    eng_opts  = ["gemini", "claude", "both"]
+    eng_labels = {"gemini": "🔵 Gemini Vision (เร็ว + ฟรี)",
+                  "claude": "🟣 Claude Vision (แม่นยำ + วิเคราะห์ลึก)",
+                  "both":   "⚡ Both — Dual Analysis (ใช้ทั้ง 2 engine พร้อมกัน)"}
+    current_eng = STORED_ANDRO_ENG if STORED_ANDRO_ENG in eng_opts else "gemini"
+    chosen_eng = st.radio(
+        "Andromeda Engine:",
+        eng_opts,
+        index=eng_opts.index(current_eng),
+        format_func=lambda x: eng_labels[x],
+        horizontal=True,
+        key="andro_eng_radio"
+    )
+    st.markdown(f"""
+    <div style='background:rgba(15,23,42,.8);border:1px solid #1e293b;border-radius:8px;padding:12px 16px;
+      font-size:12px;color:#64748b;font-family:IBM Plex Mono,monospace;margin-top:6px'>
+      💡 เพื่อให้ถาวร เพิ่มบรรทัดนี้ใน <code style='color:#38bdf8'>.streamlit/secrets.toml</code>:<br>
+      <span style='color:#34d399'>ANDROMEDA_ENGINE = "{chosen_eng}"</span>
+    </div>""", unsafe_allow_html=True)
+
+    # ── System Info ───────────────────────────────────────────────────
     st.markdown("<div class='section-title'>📊 ข้อมูลระบบ</div>", unsafe_allow_html=True)
     sys_info = [
         ("Streamlit", st.__version__),
         ("Python", f"{__import__('sys').version.split()[0]}"),
-        ("App Version", "AQUALINE v9.0"),
-        ("หน้าทั้งหมด", "14 หน้า"),
-        ("Agent ในระบบ", "25 Agent"),
+        ("App Version", "AQUALINE v9.1 — Andromeda Edition"),
+        ("หน้าทั้งหมด", "17 หน้า (+Andromeda)"),
+        ("Agent ในระบบ", "26 Agent + Chairman"),
+        ("Gemini API", "✅ Ready" if STORED_KEY else "❌ No Key"),
+        ("Claude API", "✅ Ready" if STORED_CLAUDE else "❌ No Key"),
+        ("Andromeda Engine", eng_labels.get(current_eng, current_eng)),
         ("เวลาปัจจุบัน", datetime.now().strftime("%d/%m/%Y %H:%M")),
     ]
     for key, val in sys_info:
