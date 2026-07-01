@@ -215,6 +215,7 @@ const LINE_COLOR_THOUGHT="__LINE_COLOR_THOUGHT__";
 const LINE_WIDTH_AGENT=__LINE_WIDTH_AGENT__;
 const LINE_WIDTH_THOUGHT=__LINE_WIDTH_THOUGHT__;
 const SPEED_MULT=__SPEED_MULT__;
+const IS_OVERLAY=__IS_OVERLAY__;
 
 let kn=[],pts=[],fr=0,hov=null,logIdx=0;
 const STARS=Array.from({length:160},()=>{
@@ -282,13 +283,16 @@ function spP(a1,a2){
 }
 
 function drawScene(){
-  ctx.clearRect(0,0,W,H);ctx.fillStyle='#020a12';ctx.fillRect(0,0,W,H);
-  ctx.save();
-  const step=40,ox=((panX%step)+step)%step,oy=((panY%step)+step)%step;
-  ctx.strokeStyle='#071828';ctx.lineWidth=.4;
-  for(let x=ox;x<W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for(let y=oy;y<H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  ctx.restore();
+  ctx.clearRect(0,0,W,H);
+  if (!IS_OVERLAY) {
+    ctx.fillStyle='#020a12';ctx.fillRect(0,0,W,H);
+    ctx.save();
+    const step=40,ox=((panX%step)+step)%step,oy=((panY%step)+step)%step;
+    ctx.strokeStyle='#071828';ctx.lineWidth=.4;
+    for(let x=ox;x<W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=oy;y<H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    ctx.restore();
+  }
   ctx.save();ctx.translate(panX,panY);ctx.scale(scale,scale);
 
   ctx.save();ctx.fillStyle='#bfe8ff';
@@ -453,6 +457,39 @@ function applyPhysics(){
     a.vx=(a.vx+fx/W)*.87;a.vy=(a.vy+fy/H)*.87;
     a.x=Math.max(.04,Math.min(.96,a.x+a.vx*SPEED_MULT));a.y=Math.max(.04,Math.min(.96,a.y+a.vy*SPEED_MULT));
   });
+
+  // Simple overlap resolver: positional relaxation passes to separate touching nodes
+  (function resolveOverlaps(){
+    const PAD = 12; // extra pixel padding between nodes (tune this)
+    const PASSES = 3; // number of relaxation iterations
+    for(let pass=0; pass<PASSES; pass++){
+      for(let i=0;i<AGENTS.length;i++){
+        const a = AGENTS[i];
+        if(!a || a.id==='HUB') continue;
+        for(let j=i+1;j<AGENTS.length;j++){
+          const b = AGENTS[j];
+          if(!b || b.id==='HUB') continue;
+          const dx = (a.x - b.x) * W;
+          const dy = (a.y - b.y) * H;
+          let dist = Math.hypot(dx, dy) || 0.0001;
+          const ra = hitR(a); const rb = hitR(b);
+          const minDist = (ra + rb + PAD);
+          if(dist < minDist){
+            const overlap = (minDist - dist) * 0.5;
+            const ux = dx / dist;
+            const uy = dy / dist;
+            const ox = ux * overlap;
+            const oy = uy * overlap;
+            a.x = Math.max(.04, Math.min(.96, a.x + ox / W));
+            a.y = Math.max(.04, Math.min(.96, a.y + oy / H));
+            b.x = Math.max(.04, Math.min(.96, b.x - ox / W));
+            b.y = Math.max(.04, Math.min(.96, b.y - oy / H));
+          }
+        }
+      }
+    }
+  })();
+
   kn.forEach(k=>{
     k.x+=k.vx*SPEED_MULT;k.y+=k.vy*SPEED_MULT;
     k.pT+=k.pSp*SPEED_MULT;if(k.pT>1)k.pT-=1;
@@ -516,7 +553,7 @@ tick();
 
 
 def render_full_graph(height=560, a26_phase="idle", a26_status="", title="AQUALINE NEURAL NETWORK", theme=None,
-                       active_agents=None, active_label=""):
+                       active_agents=None, active_label="", is_overlay=False):
     """คืน HTML string ของ Knowledge Graph แบบเต็ม (physics + drag/zoom/pan + controls)
     theme: dict ปรับแต่งได้ (ดู DEFAULT_THEME) — ถ้าไม่ส่งจะใช้ค่าเริ่มต้น
     active_agents: list ของ agent id (เช่น ["A3","A8"]) ที่ "กำลังทำงานอยู่จริง" ตอนนี้ — ถ้าไม่ส่ง/ส่ง None/[]
@@ -541,7 +578,17 @@ def render_full_graph(height=560, a26_phase="idle", a26_status="", title="AQUALI
             .replace("__LINE_COLOR_THOUGHT__", str(t["line_color_thought"]))
             .replace("__LINE_WIDTH_AGENT__", str(t["line_width_agent"]))
             .replace("__LINE_WIDTH_THOUGHT__", str(t["line_width_thought"]))
-            .replace("__SPEED_MULT__", str(t["speed_multiplier"])))
+            .replace("__SPEED_MULT__", str(t["speed_multiplier"]))
+            .replace("__IS_OVERLAY__", "true" if is_overlay else "false"))
+            
+    if is_overlay:
+        overlay_css = """
+        <style>
+        #kg-root { background: transparent !important; border: none !important; }
+        #topbar, #controls, #inspector, #logbar, #a26-banner, #meet-banner { display: none !important; }
+        </style>
+        """
+        html += overlay_css
     return html
 
 

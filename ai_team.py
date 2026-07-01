@@ -3,6 +3,7 @@ import requests
 import time
 import json
 import os
+import re
 import math
 import base64
 import asyncio
@@ -2041,31 +2042,31 @@ with col_main:
             st.session_state.health_report = {}
             st.session_state.agent_ratings = {}
 
-            # ── Orbit Animation (Pixel Art) ──
-            num = len(selected_agents)
-            icons_html = ""
-            radius_inner, radius_outer = 170, 250
-            center_x, center_y = 300, 300
-            for i, aid in enumerate(selected_agents):
-                angle = (2 * math.pi / num) * i
-                r = radius_outer if i % 2 == 0 else radius_inner
-                style_class = "agent-outer" if i % 2 == 0 else "agent-inner"
-                x = center_x + r * math.cos(angle)
-                y = center_y + r * math.sin(angle)
-                px_svg = team_data[aid].get('pixel_art', team_data[aid]['icon'])
-                icons_html += f'<div class="agent-icon {style_class}" style="left:{x}px; top:{y}px; animation: spin-ccw 20s linear infinite; font-size:14px;">{px_svg}</div>'
-            orbit_html = f"""
-            <div class="orbit-wrapper">
-            <div class="orbit-ring-inner"></div>
-            <div class="orbit-ring-outer"></div>
-            <div class="center-logo">
-             <img src="https://static.wixstatic.com/media/1af48d_3d1d8bf08172488c950dbceb3c0dbe2f~mv2.png" 
-             style="width: 120px; height: 120px; border-radius: 300%; object-fit: contain; background: white;">
-            </div>
-            <div class="orbit-system">{icons_html}</div>
-            </div>"""
+            # ── Active Knowledge Graph during Thinking ──
+            _kg_a26_phase = st.session_state.get("a26_research_status", "idle")
+            _kg_a26_ts    = st.session_state.get("a26_research_ts", "")
+            if _kg_a26_phase == "running":
+                _kg_a26_status_text = "🌐 A26 กำลังเจาะข้อมูลคู่แข่ง..."
+            elif _kg_a26_phase == "done":
+                _kg_a26_status_text = f"✅ A26 อัปเดตล่าสุด {_kg_a26_ts}"
+            elif _kg_a26_phase == "error":
+                _kg_a26_status_text = "⚠️ A26 ค้นหาไม่สำเร็จ"
+            else:
+                _kg_a26_status_text = "⏳ A26 รอกดปุ่มเริ่มค้นหา (หน้า งานบริษัทอาควาไลน์)"
+
+            _kg_height = 560
+            _kg_html = render_full_graph(
+                height=_kg_height,
+                a26_phase=_kg_a26_phase,
+                a26_status=_kg_a26_status_text,
+                title="AQUALINE AI TEAM NETWORK (ACTIVE MEETING)",
+                theme=get_kg_theme(),
+                active_agents=selected_agents,
+                is_overlay=True,
+            )
             orbit_place = st.empty()
-            orbit_place.markdown(orbit_html, unsafe_allow_html=True)
+            with orbit_place.container():
+                _components.html(_kg_html, height=_kg_height + FULL_EXTRA_PX, scrolling=False)
 
             active_model = get_best_model(API_KEY)
             st.info(f"🔮 ใช้โมเดล: **{active_model}** · 🌏 ภาษา: **{st.session_state.ui_lang}**")
